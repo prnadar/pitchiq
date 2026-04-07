@@ -1,0 +1,51 @@
+id,season,date,team1,team2,venue,toss_winner,toss_decision,winner,result_type,win_margin,team1_score,team2_score
+1,2024,2024-03-22,Chennai Super Kings,Mumbai Indians,"Arun Jaitley Stadium, Delhi",Chennai Super Kings,bat,Chennai Super Kings,wickets,2,205,219
+2,2024,2024-03-24,Mumbai Indians,Chennai Super Kings,"Eden Gardens, Kolkata",Mumbai Indians,bat,Chennai Super Kings,runs,49,199,212
+3,2024,2024-03-27,Punjab Kings,Delhi Capitals,"Wankhede Stadium, Mumbai",Punjab Kings,field,Punjab Kings,wickets,6,143,114
+4,2024,2024-03-29,Chennai Super Kings,Rajasthan Royals,"Sawai Mansingh Stadium, Jaipur",Rajasthan Royals,bat,Rajasthan Royals,runs,29,140,170
+5,2024,2024-03-30,Lucknow Super Giants,Rajasthan Royals,"Bharat Ratna Shri Atal Bihari Vajpayee Ekana Cricket Stadium, Lucknow",Lucknow Super Giants,bat,Lucknow Super Giants,wickets,5,140,129
+6,2024,2024-04-01,Sunrisers Hyderabad,Delhi Capitals,"Punjab Cricket Association Stadium, Mohali",Delhi Capitals,bat,Sunrisers Hyderabad,wickets,5,219,188
+7,2024,2024-04-04,Gujarat Titans,Kolkata Knight Riders,"M Chinnaswamy Stadium, Bangalore",Kolkata Knight Riders,field,Gujarat Titans,runs,49,201,189
+8,2024,2024-04-06,Mumbai Indians,Kolkata Knight Riders,"Wankhede Stadium, Mumbai",Kolkata Knight Riders,field,Mumbai Indians,wickets,6,157,180
+9,2024,2024-04-08,Punjab Kings,Royal Challengers Bangalore,"Arun Jaitley Stadium, Delhi",Punjab Kings,bat,Royal Challengers Bangalore,runs,52,204,218
+10,2024,2024-04-10,Rajasthan Royals,Kolkata Knight Riders,"M Chinnaswamy Stadium, Bangalore",Kolkata Knight Riders,bat,Kolkata Knight Riders,runs,14,210,190
+11,2024,2024-04-12,Lucknow Super Giants,Chennai Super Kings,"Rajiv Gandhi Intl Stadium, Hyderabad",Chennai Super Kings,field,Chennai Super Kings,runs,60,131,105
+12,2024,2024-04-13,Rajasthan Royals,Chennai Super Kings,"Arun Jaitley Stadium, Delhi",Chennai Super Kings,bat,Rajasthan Royals,runs,51,163,187
+13,2024,2024-04-16,Gujarat Titans,Chennai Super Kings,"Arun Jaitley Stadium, Delhi",Gujarat Titans,bat,Gujarat Titans,wickets,1,206,207
+14,2024,2024-04-17,Mumbai Indians,Chennai Super Kings,"Sawai Mansingh Stadium, Jaipur",Chennai Super Kings,bat,Mumbai Indians,wickets,10,140,162
+15,2024,2024-04-19,Gujarat Titans,Royal Challengers Bangalore,"M Chinnaswamy Stadium, Bangalore",Royal Challengers Bangalore,bat,Gujarat Titans,runs,32,157,186
+16,2024,2024-04-21,Delhi Capitals,Sunrisers Hyderabad,"Sawai Mansingh Stadium, Jaipur",Sunrisers Hyderabad,field,Delhi Capitals,wickets,6,132,167
+17,2024,2024-04-23,Lucknow Super Giants,Kolkata Knight Riders,"Wankhede Stadium, Mumbai",Lucknow Super Giants,bat,Lucknow Super Giants,runs,60,172,141
+18,2024,2024-04-25,Delhi Capitals,Punjab Kings,"Eden Gardens, Kolkata",Delhi Capitals,field,Delhi Capitals,wickets,7,154,126
+19,2024,2024-04-28,Sunrisers Hyderabad,Rajasthan Royals,"Rajiv Gandhi Intl Stadium, Hyderabad",Rajasthan Royals,field,Rajasthan Royals,wickets,2,137,148
+20,2024,2024-04-30,Chennai Super Kings,Kolkata Knight Riders,"Eden Gardens, Kolkata",Chennai Super Kings,field,Chennai Super Kings,wickets,8,161,130
+21,2024,2024-05-02,Gujarat Titans,Chennai Super Kings,"Wankhede Stadium, Mumbai",Gujarat Titans,bat,Chennai Super Kings,runs,15,182,204
+22,2024,2024-05-04,Kolkata Knight Riders,Sunrisers Hyderabad,"Wankhede Stadium, Mumbai",Kolkata Knight Riders,field,Kolkata Knight Riders,wickets,8,166,180
+23,2024,2024-05-05,Royal Challengers Bangalore,Kolkata Knight Riders,"Arun Jaitley Stadium, Delhi",Royal Challengers Bangalore,bat,Kolkata Knight Riders,runs,52,170,137
+24,2024,2024-05-07,Lucknow Super Giants,Punjab Kings,"Narendra Modi Stadium, Ahmedabad",Lucknow Super Giants,bat,Punjab Kings,wickets,3,138,174
+25,2024,2024-05-10,Kolkata Knight Riders,Sunrisers Hyderabad,"MA Chidambaram Stadium, Chennai",Kolkata Knight Riders,bat,Sunrisers Hyderabad,wickets,6,163,149
+26,2024,2024-05-11,Kolkata Knight Riders,Delhi Capitals,"Rajiv Gandhi Intl Stadium, Hyderabad",Kolkata Knight Riders,field,Kolkata Knight Riders,wickets,9,131,149
+27,2024,2024-05-13,Chennai Super Kings,Gujarat Titans,"Eden Gardens, Kolkata",Gujarat Titans,bat,Gujarat Titans,runs,20,177,173
+28,2024,2024-05-15,Punjab Kings,Gujarat Titans,"Arun Jaitley Stadium, Delhi",Punjab Kings,field,Gujarat Titans,wickets,3,163,137
+29,2024,2024-05-18,Gujarat Titans,Royal Challengers Bangalore,"Arun Jaitley Stadium, Delhi",Royal Challengers Bangalore,bat,Royal Challengers Bangalore,wickets,5,194,216
+30,2024,2024-05-20,Mumbai Indians,Chennai Super Kings,"Rajiv Gandhi Intl Stadium, Hyderabad",Chennai Super Kings,bat,Mumbai Indians,runs,45,163,143
+31,2024,2024-05-22,Gujarat Titans,Sunrisers Hyderabad,"Narendra Modi Stadium, Ahmedabad",Gujarat Titans,bat,Gujarat Titans,runs,14,199,163
+32,2024,2024-05-23,Lucknow Super Giants,Gujarat Titans,"M Chinnaswamy Stadium, Bangalore",Gujarat Titans,bat,Lucknow Super Giants,wickets,1,175,161
+33,2024,2024-05-25,Chennai Super Kings,Rajasthan Royals,"Narendra Modi Stadium, Ahmedabad",Rajasthan Royals,bat,Rajasthan Royals,wickets,3,152,164
+34,2024,2024-05-27,Royal Challengers Bangalore,Rajasthan Royals,"Rajiv Gandhi Intl Stadium, Hyderabad",Royal Challengers Bangalore,field,Royal Challengers Bangalore,runs,29,134,154
+35,2024,2024-05-29,Kolkata Knight Riders,Punjab Kings,"Sawai Mansingh Stadium, Jaipur",Punjab Kings,bat,Kolkata Knight Riders,runs,30,172,167
+36,2024,2024-06-01,Delhi Capitals,Rajasthan Royals,"Narendra Modi Stadium, Ahmedabad",Rajasthan Royals,field,Rajasthan Royals,wickets,5,152,186
+37,2024,2024-06-02,Mumbai Indians,Chennai Super Kings,"Bharat Ratna Shri Atal Bihari Vajpayee Ekana Cricket Stadium, Lucknow",Chennai Super Kings,field,Chennai Super Kings,wickets,2,179,212
+38,2024,2024-06-04,Delhi Capitals,Mumbai Indians,"Rajiv Gandhi Intl Stadium, Hyderabad",Delhi Capitals,bat,Delhi Capitals,wickets,6,209,209
+39,2024,2024-06-07,Delhi Capitals,Gujarat Titans,"Arun Jaitley Stadium, Delhi",Gujarat Titans,field,Delhi Capitals,wickets,3,154,167
+40,2024,2024-06-09,Royal Challengers Bangalore,Delhi Capitals,"Rajiv Gandhi Intl Stadium, Hyderabad",Royal Challengers Bangalore,field,Royal Challengers Bangalore,wickets,6,189,205
+41,2024,2024-06-10,Kolkata Knight Riders,Gujarat Titans,"Punjab Cricket Association Stadium, Mohali",Kolkata Knight Riders,bat,Kolkata Knight Riders,runs,44,172,143
+42,2024,2024-06-13,Delhi Capitals,Kolkata Knight Riders,"Eden Gardens, Kolkata",Delhi Capitals,bat,Delhi Capitals,runs,44,139,157
+43,2024,2024-06-14,Lucknow Super Giants,Kolkata Knight Riders,"Rajiv Gandhi Intl Stadium, Hyderabad",Kolkata Knight Riders,field,Lucknow Super Giants,wickets,5,143,157
+44,2024,2024-06-17,Royal Challengers Bangalore,Gujarat Titans,"Punjab Cricket Association Stadium, Mohali",Royal Challengers Bangalore,bat,Gujarat Titans,wickets,3,189,216
+45,2024,2024-06-19,Punjab Kings,Gujarat Titans,"Rajiv Gandhi Intl Stadium, Hyderabad",Gujarat Titans,bat,Gujarat Titans,wickets,5,161,156
+46,2024,2024-06-20,Kolkata Knight Riders,Delhi Capitals,"Punjab Cricket Association Stadium, Mohali",Kolkata Knight Riders,field,Kolkata Knight Riders,wickets,2,147,126
+47,2024,2024-06-23,Sunrisers Hyderabad,Royal Challengers Bangalore,"Eden Gardens, Kolkata",Sunrisers Hyderabad,field,Sunrisers Hyderabad,runs,31,137,123
+48,2024,2024-06-24,Sunrisers Hyderabad,Mumbai Indians,"Bharat Ratna Shri Atal Bihari Vajpayee Ekana Cricket Stadium, Lucknow",Mumbai Indians,field,Sunrisers Hyderabad,wickets,7,183,211
+49,2024,2024-06-26,Punjab Kings,Kolkata Knight Riders,"Arun Jaitley Stadium, Delhi",Kolkata Knight Riders,field,Punjab Kings,wickets,7,151,170
+50,2024,2024-06-29,Lucknow Super Giants,Gujarat Titans,"Wankhede Stadium, Mumbai",Gujarat Titans,bat,Lucknow Super Giants,wickets,8,153,119

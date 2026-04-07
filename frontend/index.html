@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PitchIQ — IPL Match Predictions</title>
+<meta name="description" content="ML-powered IPL match predictions with win probabilities, bookmaker odds, and value bet detection."/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        "background": "#0b0e11", "surface": "#0b0e11", "surface-dim": "#0b0e11",
+        "surface-bright": "#282d31", "surface-container-lowest": "#000000",
+        "surface-container-low": "#101417", "surface-container": "#161a1e",
+        "surface-container-high": "#1c2024", "surface-container-highest": "#22262b",
+        "surface-variant": "#22262b", "on-surface": "#f8f9fe",
+        "on-surface-variant": "#a9abaf", "outline": "#737679",
+        "outline-variant": "#45484c", "primary": "#69daff",
+        "primary-dim": "#00c0ea", "on-primary": "#004a5d",
+        "primary-container": "#00cffc", "on-primary-container": "#004050",
+        "secondary": "#c3f400", "secondary-dim": "#b7e500",
+        "on-secondary": "#455900", "secondary-container": "#506600",
+        "on-secondary-container": "#efffbc", "on-secondary-fixed": "#354500",
+        "error": "#ff716c", "on-error": "#490006", "error-container": "#9f0519",
+      },
+      fontFamily: { "headline": ["Space Grotesk"], "body": ["Inter"], "label": ["Inter"] },
+      borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }
+    }
+  }
+}
+</script>
+<style>
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+  .fill-icon { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+  .glass-nav { background: rgba(16,20,23,0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+  .fade-up { animation: fadeUp 0.35s ease forwards; }
+  @keyframes lp { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+  .live-dot { animation: lp 1.4s infinite; }
+  .prob-fill { transition: width 1.1s cubic-bezier(0.25,0.46,0.45,0.94); }
+  .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.75); display:none; align-items:center; justify-content:center; z-index:1000; padding:16px; }
+  .modal-backdrop.active { display:flex; }
+  .sidebar-sb::-webkit-scrollbar { width:3px; }
+  .sidebar-sb::-webkit-scrollbar-thumb { background:#45484c; border-radius:2px; }
+  .team-circle { width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:11px; border:2px solid #101417; }
+</style>
+</head>
+<body class="bg-background text-on-surface font-body min-h-screen">
+
+<!-- ═══════════════════════════════════════
+     LEFT SIDEBAR (desktop only)
+═══════════════════════════════════════ -->
+<aside class="hidden lg:flex fixed inset-y-0 left-0 z-50 flex-col w-[260px] bg-surface-container-low border-r border-outline-variant">
+  <div class="p-5 flex items-center gap-3 border-b border-outline-variant">
+    <div class="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
+      <span class="material-symbols-outlined text-on-primary fill-icon" style="font-size:20px">sports_cricket</span>
+    </div>
+    <h1 class="font-headline font-bold text-xl tracking-tighter">PITCH<span class="text-primary">IQ</span></h1>
+  </div>
+  <nav class="flex-1 p-3 space-y-0.5 overflow-y-auto sidebar-sb">
+    <a class="flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-container text-primary font-headline font-bold text-sm" href="#"><span class="material-symbols-outlined fill-icon">dynamic_feed</span>Match Feed</a>
+    <a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all font-headline font-bold text-sm" href="#"><span class="material-symbols-outlined">query_stats</span>My Predictions</a>
+    <a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all font-headline font-bold text-sm" href="#"><span class="material-symbols-outlined">leaderboard</span>Leaderboard</a>
+    <a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all font-headline font-bold text-sm" href="#"><span class="material-symbols-outlined">analytics</span>Analytics</a>
+    <div class="my-3 border-t border-outline-variant"></div>
+    <a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all font-headline font-bold text-sm" href="#"><span class="material-symbols-outlined">settings</span>Settings</a>
+  </nav>
+  <div class="p-4 border-t border-outline-variant">
+    <div id="sidebar-logged-out" class="space-y-2">
+      <button class="w-full py-3 bg-secondary text-on-secondary-fixed font-headline font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-secondary-dim transition-all" onclick="showModal('signup')">Start Free Trial</button>
+      <button class="w-full py-3 border border-outline-variant text-on-surface-variant font-headline font-bold text-xs uppercase tracking-widest rounded-xl hover:border-primary hover:text-primary transition-all" onclick="showModal('login')">Log In</button>
+    </div>
+    <div id="sidebar-logged-in" class="hidden flex items-center gap-3">
+      <div class="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-on-primary font-headline font-bold text-sm" id="sidebar-avatar">U</div>
+      <div class="flex-1 min-w-0">
+        <p class="font-headline font-bold text-sm text-on-surface truncate" id="sidebar-name">User</p>
+        <p class="text-xs text-on-surface-variant" id="sidebar-plan">Free</p>
+      </div>
+      <button onclick="handleLogout()" title="Log out"><span class="material-symbols-outlined text-on-surface-variant hover:text-error transition-colors" style="font-size:20px">logout</span></button>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══════════════════════════════════════
+     MAIN CONTENT
+═══════════════════════════════════════ -->
+<div class="lg:ml-[260px]">
+
+  <!-- TOP APP BAR -->
+  <header class="sticky top-0 z-40 glass-nav border-b border-outline-variant">
+    <div class="flex items-center justify-between px-4 h-16 gap-3">
+      <div class="flex items-center gap-3 lg:hidden">
+        <button onclick="openMobileSidebar()"><span class="material-symbols-outlined text-on-surface">menu</span></button>
+        <h1 class="font-headline font-bold text-xl tracking-tighter">PITCH<span class="text-primary">IQ</span></h1>
+      </div>
+      <div class="hidden lg:flex flex-1 max-w-sm">
+        <div class="flex items-center gap-2 bg-surface-container rounded-xl px-4 py-2.5 w-full border border-outline-variant">
+          <span class="material-symbols-outlined text-on-surface-variant" style="font-size:18px">search</span>
+          <input class="bg-transparent text-sm text-on-surface placeholder-on-surface-variant outline-none flex-1" placeholder="Search predictions..." type="text"/>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 ml-auto">
+        <span class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 bg-error/20 text-error text-xs font-headline font-bold uppercase tracking-widest rounded-full">
+          <span class="w-1.5 h-1.5 rounded-full bg-error live-dot"></span>IPL 2025
+        </span>
+        <button class="hidden sm:inline-flex px-4 py-2 border border-outline-variant text-on-surface-variant text-xs font-headline font-bold uppercase tracking-widest rounded-xl hover:border-primary hover:text-primary transition-all" id="btn-login" onclick="showModal('login')">Log in</button>
+        <button class="hidden sm:inline-flex px-4 py-2 bg-secondary text-on-secondary-fixed text-xs font-headline font-bold uppercase tracking-widest rounded-xl hover:bg-secondary-dim transition-all" id="btn-join" onclick="showModal('signup')">Join Free</button>
+        <div class="hidden w-9 h-9 rounded-full bg-primary text-on-primary items-center justify-center font-headline font-bold text-sm cursor-pointer hover:opacity-80 transition-opacity" id="user-avatar" onclick="handleLogout()" title="Click to log out"></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section class="relative overflow-hidden min-h-[360px] lg:min-h-[420px] flex flex-col justify-end border-b border-outline-variant">
+    <div class="absolute inset-0 z-0" style="background: linear-gradient(135deg, rgba(105,218,255,0.07) 0%, #0b0e11 50%, rgba(195,244,0,0.05) 100%);">
+      <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 15% 85%, rgba(105,218,255,0.12) 0%,transparent 55%),radial-gradient(ellipse at 85% 15%, rgba(195,244,0,0.08) 0%,transparent 55%);"></div>
+    </div>
+    <div class="relative z-10 p-6 lg:p-10 lg:max-w-3xl">
+      <div class="flex items-center gap-3 mb-4">
+        <span class="flex items-center gap-1.5 bg-error px-3 py-1 text-xs font-headline font-bold text-on-error uppercase tracking-widest rounded-sm">
+          <span class="w-1.5 h-1.5 rounded-full bg-on-error live-dot"></span>LIVE NOW
+        </span>
+        <span class="text-secondary font-headline text-xs font-bold uppercase tracking-widest">MATCH 34 · T20</span>
+      </div>
+      <h2 class="font-headline font-bold text-4xl lg:text-6xl leading-none tracking-tighter mb-6">
+        MI vs CSK:<br/><span class="text-primary">EL CL&#193;SICO OF IPL</span>
+      </h2>
+      <div class="mb-6 max-w-sm">
+        <div class="flex justify-between text-xs font-headline font-bold uppercase tracking-widest mb-2">
+          <span class="text-primary">Mumbai 62%</span>
+          <span class="text-secondary">Chennai 38%</span>
+        </div>
+        <div class="h-2 flex gap-0.5 overflow-hidden bg-surface-container rounded-full">
+          <div class="h-full bg-primary rounded-full prob-fill" style="width:62%"></div>
+          <div class="h-full bg-secondary rounded-full flex-1"></div>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-8 mb-7 text-sm">
+        <div><p class="text-on-surface-variant font-label text-[10px] uppercase tracking-widest mb-1">Model Accuracy</p><p class="font-headline font-bold text-on-surface">74%</p></div>
+        <div><p class="text-on-surface-variant font-label text-[10px] uppercase tracking-widest mb-1">Season Predictions</p><p class="font-headline font-bold text-on-surface">148</p></div>
+        <div><p class="text-on-surface-variant font-label text-[10px] uppercase tracking-widest mb-1">Value Bets Found</p><p class="font-headline font-bold text-secondary">23</p></div>
+      </div>
+      <button class="flex items-center gap-2 px-7 py-4 bg-secondary text-on-secondary-fixed font-headline font-bold uppercase tracking-widest text-sm rounded-xl hover:bg-secondary-dim transition-all" onclick="showModal('signup')">
+        GET FREE PREDICTIONS <span class="material-symbols-outlined" style="font-size:18px">trending_up</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- FEED + RIGHT SIDEBAR -->
+  <div class="flex">
+    <div class="flex-1 min-w-0">
+
+      <!-- Feed tabs -->
+      <nav class="sticky top-16 z-30 glass-nav px-4 lg:px-6 border-b border-outline-variant">
+        <div class="flex gap-5 no-scrollbar overflow-x-auto">
+          <button class="feed-tab py-4 border-b-2 border-secondary text-secondary font-headline font-bold text-[11px] uppercase tracking-widest whitespace-nowrap" data-tab="all" onclick="switchTab(this,'all')">All Matches</button>
+          <button class="feed-tab py-4 border-b-2 border-transparent text-on-surface-variant font-headline font-bold text-[11px] uppercase tracking-widest whitespace-nowrap hover:text-on-surface transition-colors" data-tab="value" onclick="switchTab(this,'value')">Value Bets</button>
+          <button class="feed-tab py-4 border-b-2 border-transparent text-on-surface-variant font-headline font-bold text-[11px] uppercase tracking-widest whitespace-nowrap hover:text-on-surface transition-colors" data-tab="trending" onclick="switchTab(this,'trending')">Trending</button>
+          <button class="feed-tab py-4 border-b-2 border-transparent text-on-surface-variant font-headline font-bold text-[11px] uppercase tracking-widest whitespace-nowrap hover:text-on-surface transition-colors" data-tab="completed" onclick="switchTab(this,'completed')">Completed</button>
+        </div>
+      </nav>
+
+      <!-- Match cards -->
+      <div class="p-4 lg:p-6 space-y-4 pb-28 lg:pb-8" id="predictions-feed"></div>
+    </div>
+
+    <!-- RIGHT SIDEBAR (desktop) -->
+    <aside class="hidden lg:flex flex-col gap-4 w-[300px] xl:w-[320px] shrink-0 p-6 pt-4 border-l border-outline-variant">
+      <!-- Free counter -->
+      <div class="bg-surface-container-low border border-outline-variant rounded-2xl p-5" id="free-counter-card">
+        <p class="text-on-surface-variant font-label text-[10px] uppercase tracking-widest mb-3">Free Predictions Today</p>
+        <div class="flex items-baseline gap-2 mb-1">
+          <span class="font-headline font-bold text-5xl text-secondary" id="free-counter">2</span>
+          <span class="text-on-surface-variant font-label text-sm" id="free-counter-label">remaining</span>
+        </div>
+        <div class="mt-4 h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+          <div class="h-full bg-secondary rounded-full" style="width:100%"></div>
+        </div>
+      </div>
+
+      <!-- Model stats -->
+      <div class="bg-surface-container-low border border-outline-variant rounded-2xl p-5">
+        <p class="text-on-surface-variant font-label text-[10px] uppercase tracking-widest mb-4">Model Performance</p>
+        <div class="space-y-3">
+          <div class="flex justify-between items-center">
+            <span class="text-sm font-label text-on-surface-variant">XGBoost</span>
+            <div class="flex items-center gap-2">
+              <div class="w-20 h-1.5 bg-surface-container-highest rounded-full overflow-hidden"><div class="h-full bg-primary rounded-full" style="width:73%"></div></div>
+              <span class="text-xs font-headline font-bold text-primary w-8">73%</span>
+            </div>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-sm font-label text-on-surface-variant">LightGBM</span>
+            <div class="flex items-center gap-2">
+              <div class="w-20 h-1.5 bg-surface-container-highest rounded-full overflow-hidden"><div class="h-full bg-primary-dim rounded-full" style="width:72%"></div></div>
+              <span class="text-xs font-headline font-bold text-primary-dim w-8">72%</span>
+            </div>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-sm font-label text-on-surface-variant">Logistic</span>
+            <div class="flex items-center gap-2">
+              <div class="w-20 h-1.5 bg-surface-container-highest rounded-full overflow-hidden"><div class="h-full bg-outline rounded-full" style="width:69%"></div></div>
+              <span class="text-xs font-headline font-bold text-on-surface-variant w-8">69%</span>
+            </div>
+          </div>
+          <div class="border-t border-outline-variant pt-3 flex justify-between items-center">
+            <span class="text-sm font-headline font-bold text-on-surface">Ensemble</span>
+            <span class="text-sm font-headline font-bold text-secondary">74%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upgrade CTA -->
+      <div class="bg-surface-container-low border border-outline-variant rounded-2xl p-5" style="background:linear-gradient(135deg,rgba(105,218,255,0.06),#101417,rgba(195,244,0,0.06))">
+        <p class="font-headline font-bold text-base text-on-surface mb-1">Upgrade to Pro</p>
+        <p class="text-on-surface-variant text-xs font-label mb-4">Unlock bookmaker odds &amp; value alerts</p>
+        <ul class="space-y-2 mb-5">
+          <li class="flex items-center gap-2 text-xs font-label text-on-surface"><span class="material-symbols-outlined text-secondary fill-icon" style="font-size:16px">check_circle</span>All match predictions</li>
+          <li class="flex items-center gap-2 text-xs font-label text-on-surface"><span class="material-symbols-outlined text-secondary fill-icon" style="font-size:16px">check_circle</span>6 bookmaker odds feeds</li>
+          <li class="flex items-center gap-2 text-xs font-label text-on-surface"><span class="material-symbols-outlined text-secondary fill-icon" style="font-size:16px">check_circle</span>Value bet alerts + edge %</li>
+          <li class="flex items-center gap-2 text-xs font-label text-on-surface"><span class="material-symbols-outlined text-secondary fill-icon" style="font-size:16px">check_circle</span>Score range predictions</li>
+          <li class="flex items-center gap-2 text-xs font-label text-on-surface"><span class="material-symbols-outlined text-secondary fill-icon" style="font-size:16px">check_circle</span>Daily email digest</li>
+        </ul>
+        <button class="w-full py-3 bg-secondary text-on-secondary-fixed font-headline font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-secondary-dim transition-all" onclick="showModal('pricing')">Start 7-day trial · Free</button>
+        <p class="text-center text-[10px] text-on-surface-variant font-label mt-2">Then £9/mo · Cancel anytime</p>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- BOTTOM NAV (mobile) -->
+<nav class="lg:hidden fixed bottom-0 w-full h-[68px] glass-nav border-t border-outline-variant z-50 flex justify-around items-center px-2">
+  <a class="flex flex-col items-center justify-center text-secondary gap-0.5" href="#"><span class="material-symbols-outlined fill-icon">dynamic_feed</span><span class="font-label text-[9px] font-medium uppercase">Feed</span></a>
+  <a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors gap-0.5" href="#"><span class="material-symbols-outlined">query_stats</span><span class="font-label text-[9px] font-medium uppercase">Predictions</span></a>
+  <a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors gap-0.5" href="#"><span class="material-symbols-outlined">leaderboard</span><span class="font-label text-[9px] font-medium uppercase">Board</span></a>
+  <a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors gap-0.5" href="#" onclick="showModal('pricing')"><span class="material-symbols-outlined">workspace_premium</span><span class="font-label text-[9px] font-medium uppercase">Pro</span></a>
+</nav>
+
+<!-- MOBILE SIDEBAR DRAWER -->
+<div class="lg:hidden fixed inset-0 z-[60] hidden" id="mobile-sidebar">
+  <div class="absolute inset-0 bg-black/60" onclick="closeMobileSidebar()"></div>
+  <aside class="absolute inset-y-0 left-0 w-72 bg-surface-container-low flex flex-col shadow-2xl">
+    <div class="p-5 flex items-center justify-between border-b border-outline-variant">
+      <h1 class="font-headline font-bold text-xl tracking-tighter">PITCH<span class="text-primary">IQ</span></h1>
+      <button onclick="closeMobileSidebar()"><span class="material-symbols-outlined text-on-surface-variant">close</span></button>
+    </div>
+    <nav class="flex-1 p-3 space-y-0.5">
+      <a class="flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-container text-primary font-headline font-bold text-sm" href="#" onclick="closeMobileSidebar()"><span class="material-symbols-outlined fill-icon">dynamic_feed</span>Match Feed</a>
+      <a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant font-headline font-bold text-sm" href="#"><span class="material-symbols-outlined">query_stats</span>My Predictions</a>
+      <a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant font-headline font-bold text-sm" href="#"><span class="material-symbols-outlined">leaderboard</span>Leaderboard</a>
+      <a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant font-headline font-bold text-sm" href="#"><span class="material-symbols-outlined">analytics</span>Analytics</a>
+    </nav>
+    <div class="p-4 border-t border-outline-variant space-y-2">
+      <button class="w-full py-3 bg-secondary text-on-secondary-fixed font-headline font-bold text-xs uppercase tracking-widest rounded-xl" onclick="showModal('signup');closeMobileSidebar()">Start Free Trial</button>
+      <button class="w-full py-3 border border-outline-variant text-on-surface-variant font-headline font-bold text-xs uppercase tracking-widest rounded-xl" onclick="showModal('login');closeMobileSidebar()">Log In</button>
+    </div>
+  </aside>
+</div>
+
+<!-- ═══════════ SIGNUP MODAL ═══════════ -->
+<div class="modal-backdrop" id="modal-signup">
+  <div class="bg-surface-container-low border border-outline-variant rounded-2xl p-7 w-full max-w-md relative">
+    <button class="absolute top-4 right-4 text-on-surface-variant hover:text-on-surface" onclick="hideModal('signup')"><span class="material-symbols-outlined">close</span></button>
+    <div class="flex items-center gap-2 mb-2">
+      <span class="w-2 h-2 rounded-full bg-secondary"></span>
+      <p class="text-secondary font-label text-[10px] uppercase tracking-widest font-bold">7-Day Free Trial</p>
+    </div>
+    <h2 class="font-headline font-bold text-2xl text-on-surface mb-1">Create your account</h2>
+    <p class="text-on-surface-variant text-sm font-label mb-5">Full Pro access. No card required.</p>
+    <div id="signup-success" class="hidden mb-4 p-4 bg-secondary/10 border border-secondary/30 rounded-xl">
+      <p class="text-secondary font-label text-sm font-bold">Account created! You have full Pro access for 7 days.</p>
+    </div>
+    <form id="signup-form" onsubmit="handleSignup(event)" class="space-y-3">
+      <div>
+        <label class="block text-[10px] text-on-surface-variant font-label font-bold uppercase tracking-widest mb-1.5">Name</label>
+        <input class="w-full px-4 py-3 bg-surface-container border border-outline-variant rounded-xl text-on-surface text-sm font-label outline-none focus:border-primary transition-colors" type="text" id="signup-name" placeholder="Arjun" required/>
+      </div>
+      <div>
+        <label class="block text-[10px] text-on-surface-variant font-label font-bold uppercase tracking-widest mb-1.5">Email</label>
+        <input class="w-full px-4 py-3 bg-surface-container border border-outline-variant rounded-xl text-on-surface text-sm font-label outline-none focus:border-primary transition-colors" type="email" id="signup-email" placeholder="arjun@example.com" required/>
+      </div>
+      <div>
+        <label class="block text-[10px] text-on-surface-variant font-label font-bold uppercase tracking-widest mb-1.5">Password</label>
+        <input class="w-full px-4 py-3 bg-surface-container border border-outline-variant rounded-xl text-on-surface text-sm font-label outline-none focus:border-primary transition-colors" type="password" id="signup-password" placeholder="Min 6 characters" minlength="6" required/>
+      </div>
+      <p class="hidden text-error text-xs font-label" id="signup-error"></p>
+      <button type="submit" class="w-full py-3.5 bg-secondary text-on-secondary-fixed font-headline font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-secondary-dim transition-all" id="signup-btn">Create Free Account</button>
+    </form>
+    <p class="text-center text-xs text-on-surface-variant font-label mt-4">Already have an account? <a class="text-primary cursor-pointer hover:underline" onclick="showModal('login');hideModal('signup')">Log in</a></p>
+  </div>
+</div>
+
+<!-- ═══════════ LOGIN MODAL ═══════════ -->
+<div class="modal-backdrop" id="modal-login">
+  <div class="bg-surface-container-low border border-outline-variant rounded-2xl p-7 w-full max-w-md relative">
+    <button class="absolute top-4 right-4 text-on-surface-variant hover:text-on-surface" onclick="hideModal('login')"><span class="material-symbols-outlined">close</span></button>
+    <h2 class="font-headline font-bold text-2xl text-on-surface mb-1">Welcome back</h2>
+    <p class="text-on-surface-variant text-sm font-label mb-5">Log in to access your predictions.</p>
+    <form id="login-form" onsubmit="handleLogin(event)" class="space-y-3">
+      <div>
+        <label class="block text-[10px] text-on-surface-variant font-label font-bold uppercase tracking-widest mb-1.5">Email</label>
+        <input class="w-full px-4 py-3 bg-surface-container border border-outline-variant rounded-xl text-on-surface text-sm font-label outline-none focus:border-primary transition-colors" type="email" id="login-email" placeholder="arjun@example.com" required/>
+      </div>
+      <div>
+        <label class="block text-[10px] text-on-surface-variant font-label font-bold uppercase tracking-widest mb-1.5">Password</label>
+        <input class="w-full px-4 py-3 bg-surface-container border border-outline-variant rounded-xl text-on-surface text-sm font-label outline-none focus:border-primary transition-colors" type="password" id="login-password" placeholder="Your password" required/>
+      </div>
+      <p class="hidden text-error text-xs font-label" id="login-error"></p>
+      <button type="submit" class="w-full py-3.5 bg-secondary text-on-secondary-fixed font-headline font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-secondary-dim transition-all" id="login-btn">Log In</button>
+    </form>
+    <p class="text-center text-xs text-on-surface-variant font-label mt-4">No account? <a class="text-primary cursor-pointer hover:underline" onclick="showModal('signup');hideModal('login')">Join free</a></p>
+  </div>
+</div>
+
+<!-- ═══════════ PRICING MODAL ═══════════ -->
+<div class="modal-backdrop" id="modal-pricing">
+  <div class="bg-surface-container-low border border-outline-variant rounded-2xl p-7 w-full max-w-2xl relative overflow-y-auto" style="max-height:90vh">
+    <button class="absolute top-4 right-4 text-on-surface-variant hover:text-on-surface" onclick="hideModal('pricing')"><span class="material-symbols-outlined">close</span></button>
+    <h2 class="font-headline font-bold text-2xl text-on-surface mb-1">Choose your plan</h2>
+    <p class="text-on-surface-variant text-sm font-label mb-7">All plans include responsible gambling tools. 18+</p>
+    <div class="grid sm:grid-cols-3 gap-4">
+      <div class="border border-outline-variant rounded-2xl p-5">
+        <p class="font-headline font-bold text-lg text-on-surface mb-1">Free</p>
+        <p class="text-3xl font-headline font-bold text-on-surface">£0<span class="text-base text-on-surface-variant">/mo</span></p>
+        <p class="text-xs text-on-surface-variant font-label mb-4">Forever free</p>
+        <ul class="space-y-2 mb-6 text-xs font-label">
+          <li class="flex items-center gap-2 text-on-surface"><span class="material-symbols-outlined text-primary" style="font-size:14px">check</span>2 predictions/day</li>
+          <li class="flex items-center gap-2 text-on-surface"><span class="material-symbols-outlined text-primary" style="font-size:14px">check</span>Win probabilities</li>
+          <li class="flex items-center gap-2 text-on-surface-variant"><span class="material-symbols-outlined text-outline" style="font-size:14px">close</span>Bookmaker odds</li>
+          <li class="flex items-center gap-2 text-on-surface-variant"><span class="material-symbols-outlined text-outline" style="font-size:14px">close</span>Value bet alerts</li>
+        </ul>
+        <button class="w-full py-3 border border-outline-variant text-on-surface-variant font-headline font-bold text-xs uppercase tracking-widest rounded-xl" onclick="hideModal('pricing')">Current Plan</button>
+      </div>
+      <div class="border-2 border-secondary rounded-2xl p-5 relative" style="background:rgba(195,244,0,0.04)">
+        <span class="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-secondary text-on-secondary-fixed font-headline font-bold text-[10px] uppercase tracking-widest rounded-full whitespace-nowrap">POPULAR</span>
+        <p class="font-headline font-bold text-lg text-on-surface mb-1">Pro</p>
+        <p class="text-3xl font-headline font-bold text-secondary">£9<span class="text-base text-on-surface-variant">/mo</span></p>
+        <p class="text-xs text-on-surface-variant font-label mb-4">7-day free trial</p>
+        <ul class="space-y-2 mb-6 text-xs font-label">
+          <li class="flex items-center gap-2 text-on-surface"><span class="material-symbols-outlined text-secondary fill-icon" style="font-size:14px">check_circle</span>All match predictions</li>
+          <li class="flex items-center gap-2 text-on-surface"><span class="material-symbols-outlined text-secondary fill-icon" style="font-size:14px">check_circle</span>6 bookmaker feeds</li>
+          <li class="flex items-center gap-2 text-on-surface"><span class="material-symbols-outlined text-secondary fill-icon" style="font-size:14px">check_circle</span>Value bet alerts</li>
+          <li class="flex items-center gap-2 text-on-surface"><span class="material-symbols-outlined text-secondary fill-icon" style="font-size:14px">check_circle</span>Score range estimates</li>
+        </ul>
+        <button class="w-full py-3 bg-secondary text-on-secondary-fixed font-headline font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-secondary-dim transition-all" onclick="showModal('signup');hideModal('pricing')">Start Free Trial</button>
+      </div>
+      <div class="border border-primary/30 rounded-2xl p-5" style="background:rgba(105,218,255,0.04)">
+        <p class="font-headline font-bold text-lg text-on-surface mb-1">Expert</p>
+        <p class="text-3xl font-headline font-bold text-primary">£29<span class="text-base text-on-surface-variant">/mo</span></p>
+        <p class="text-xs text-on-surface-variant font-label mb-4">Includes everything</p>
+        <ul class="space-y-2 mb-6 text-xs font-label">
+          <li class="flex items-center gap-2 text-on-surface"><span class="material-symbols-outlined text-primary fill-icon" style="font-size:14px">check_circle</span>Everything in Pro</li>
+          <li class="flex items-center gap-2 text-on-surface"><span class="material-symbols-outlined text-primary fill-icon" style="font-size:14px">check_circle</span>API access</li>
+          <li class="flex items-center gap-2 text-on-surface"><span class="material-symbols-outlined text-primary fill-icon" style="font-size:14px">check_circle</span>Daily email digest</li>
+          <li class="flex items-center gap-2 text-on-surface"><span class="material-symbols-outlined text-primary fill-icon" style="font-size:14px">check_circle</span>Priority support</li>
+        </ul>
+        <button class="w-full py-3 border border-primary text-primary font-headline font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-primary/10 transition-all" onclick="showModal('signup');hideModal('pricing')">Get Expert</button>
+      </div>
+    </div>
+    <p class="text-center text-xs text-on-surface-variant font-label mt-6">Predictions are for information only. 18+ <a href="https://www.begambleaware.org" class="text-primary hover:underline" target="_blank">BeGambleAware.org</a></p>
+  </div>
+</div>
+
+<script>
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:8000'
+    : '';
+
+// --- State ---
+let currentUser = JSON.parse(localStorage.getItem('pitchiq_user') || 'null');
+let authToken = localStorage.getItem('pitchiq_token') || '';
+let freeRemaining = 2;
+let currentTab = 'all';
+let allPredictions = [];
+
+// --- Sample predictions ---
+const SAMPLE_PREDICTIONS = [
+    { team1:'Mumbai Indians', team2:'Chennai Super Kings', venue:'Wankhede Stadium, Mumbai', t1_win_prob:0.62, t2_win_prob:0.38, confidence:0.78, confidence_label:'High', score_range_low:155, score_range_high:192, model_breakdown:{xgboost:0.65,lightgbm:0.60,logistic_regression:0.58}, is_value_bet:true, model_edge:0.08, match_time:'19:30', form_t1:[1,1,0,1,1], form_t2:[1,0,1,0,1], status:'live' },
+    { team1:'Kolkata Knight Riders', team2:'Royal Challengers Bangalore', venue:'Eden Gardens, Kolkata', t1_win_prob:0.55, t2_win_prob:0.45, confidence:0.52, confidence_label:'Medium', score_range_low:162, score_range_high:198, model_breakdown:{xgboost:0.58,lightgbm:0.53,logistic_regression:0.50}, is_value_bet:false, model_edge:0.02, match_time:'15:30', form_t1:[1,0,1,1,0], form_t2:[0,1,1,0,1], status:'upcoming' },
+    { team1:'Rajasthan Royals', team2:'Delhi Capitals', venue:'Sawai Mansingh Stadium, Jaipur', t1_win_prob:0.71, t2_win_prob:0.29, confidence:0.85, confidence_label:'High', score_range_low:148, score_range_high:185, model_breakdown:{xgboost:0.74,lightgbm:0.70,logistic_regression:0.65}, is_value_bet:true, model_edge:0.12, match_time:'19:30', form_t1:[1,1,1,0,1], form_t2:[0,0,1,0,0], status:'upcoming' },
+    { team1:'Gujarat Titans', team2:'Punjab Kings', venue:'Narendra Modi Stadium, Ahmedabad', t1_win_prob:0.58, t2_win_prob:0.42, confidence:0.61, confidence_label:'Medium', score_range_low:168, score_range_high:210, model_breakdown:{xgboost:0.60,lightgbm:0.57,logistic_regression:0.54}, is_value_bet:false, model_edge:0.03, match_time:'19:30', form_t1:[1,0,1,0,1], form_t2:[0,1,0,1,0], status:'upcoming' },
+    { team1:'Sunrisers Hyderabad', team2:'Lucknow Super Giants', venue:'Rajiv Gandhi Intl Stadium, Hyderabad', t1_win_prob:0.49, t2_win_prob:0.51, confidence:0.35, confidence_label:'Low', score_range_low:158, score_range_high:195, model_breakdown:{xgboost:0.52,lightgbm:0.47,logistic_regression:0.45}, is_value_bet:false, model_edge:-0.01, match_time:'15:30', form_t1:[0,1,0,1,0], form_t2:[1,0,1,1,0], status:'upcoming' },
+];
+
+const ABBR = {
+    'Mumbai Indians':'MI','Chennai Super Kings':'CSK','Royal Challengers Bangalore':'RCB',
+    'Kolkata Knight Riders':'KKR','Delhi Capitals':'DC','Rajasthan Royals':'RR',
+    'Sunrisers Hyderabad':'SRH','Punjab Kings':'PBKS','Gujarat Titans':'GT','Lucknow Super Giants':'LSG',
+};
+
+// Team colors for circles
+const TEAM_COLORS = {
+    'MI':'#005da3','CSK':'#f5d20c','RCB':'#c8102e','KKR':'#3a225d',
+    'DC':'#0078bc','RR':'#ea1a85','SRH':'#f7552d','PBKS':'#ed1f27',
+    'GT':'#1b4295','LSG':'#00a2e1',
+};
+
+// --- Init ---
+function init() {
+    if (currentUser && authToken) setLoggedInUI();
+    allPredictions = SAMPLE_PREDICTIONS;
+    renderPredictions(allPredictions);
+    // Try to fetch live predictions
+    fetchPredictions();
+}
+
+async function fetchPredictions() {
+    try {
+        const headers = authToken ? { 'Authorization': 'Bearer ' + authToken } : {};
+        const resp = await fetch(API_BASE + '/predictions', { headers });
+        if (resp.ok) {
+            const data = await resp.json();
+            if (data && data.length > 0) {
+                allPredictions = data;
+                renderPredictions(filterPredictions(data));
+            }
+        }
+    } catch (_) { /* use sample data */ }
+}
+
+function filterPredictions(preds) {
+    if (currentTab === 'value') return preds.filter(p => p.is_value_bet);
+    if (currentTab === 'trending') return preds.slice().sort((a,b) => b.confidence - a.confidence);
+    if (currentTab === 'completed') return preds.filter(p => p.status === 'completed');
+    return preds;
+}
+
+function switchTab(el, tab) {
+    currentTab = tab;
+    document.querySelectorAll('.feed-tab').forEach(t => {
+        t.classList.remove('border-secondary','text-secondary');
+        t.classList.add('border-transparent','text-on-surface-variant');
+    });
+    el.classList.add('border-secondary','text-secondary');
+    el.classList.remove('border-transparent','text-on-surface-variant');
+    renderPredictions(filterPredictions(allPredictions));
+}
+
+// --- Auth UI ---
+function setLoggedInUI() {
+    document.getElementById('btn-login').style.display = 'none';
+    document.getElementById('btn-join').style.display = 'none';
+    const avatar = document.getElementById('user-avatar');
+    avatar.style.display = 'flex';
+    const initial = (currentUser.name || currentUser.email || 'U')[0].toUpperCase();
+    avatar.textContent = initial;
+
+    // Sidebar
+    document.getElementById('sidebar-logged-out').classList.add('hidden');
+    const sli = document.getElementById('sidebar-logged-in');
+    sli.classList.remove('hidden');
+    sli.classList.add('flex');
+    document.getElementById('sidebar-avatar').textContent = initial;
+    document.getElementById('sidebar-name').textContent = currentUser.name || currentUser.email || 'User';
+    const plan = currentUser.plan || 'free';
+    document.getElementById('sidebar-plan').textContent = plan.charAt(0).toUpperCase() + plan.slice(1) + ' Plan';
+
+    freeRemaining = 100;
+    document.getElementById('free-counter').textContent = '∞';
+    document.getElementById('free-counter-label').textContent = 'all unlocked';
+    document.querySelectorAll('.lock-overlay').forEach(el => el.remove());
+}
+
+function setLoggedOutUI() {
+    document.getElementById('btn-login').style.display = '';
+    document.getElementById('btn-join').style.display = '';
+    document.getElementById('user-avatar').style.display = 'none';
+    document.getElementById('sidebar-logged-out').classList.remove('hidden');
+    const sli = document.getElementById('sidebar-logged-in');
+    sli.classList.add('hidden');
+    sli.classList.remove('flex');
+    freeRemaining = 2;
+    document.getElementById('free-counter').textContent = '2';
+    document.getElementById('free-counter-label').textContent = 'remaining';
+}
+
+function handleLogout() {
+    currentUser = null;
+    authToken = '';
+    localStorage.removeItem('pitchiq_token');
+    localStorage.removeItem('pitchiq_user');
+    setLoggedOutUI();
+    renderPredictions(allPredictions);
+}
+
+// --- Modals ---
+function showModal(type) { document.getElementById('modal-' + type).classList.add('active'); document.body.style.overflow = 'hidden'; }
+function hideModal(type) { document.getElementById('modal-' + type).classList.remove('active'); document.body.style.overflow = ''; }
+document.querySelectorAll('.modal-backdrop').forEach(el => {
+    el.addEventListener('click', e => { if (e.target === el) { el.classList.remove('active'); document.body.style.overflow = ''; } });
+});
+
+// --- Mobile sidebar ---
+function openMobileSidebar() { document.getElementById('mobile-sidebar').classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
+function closeMobileSidebar() { document.getElementById('mobile-sidebar').classList.add('hidden'); document.body.style.overflow = ''; }
+
+// --- Signup ---
+async function handleSignup(e) {
+    e.preventDefault();
+    const btn = document.getElementById('signup-btn');
+    const errEl = document.getElementById('signup-error');
+    const successEl = document.getElementById('signup-success');
+    errEl.classList.add('hidden'); btn.disabled = true;
+    btn.textContent = 'Creating account...';
+    const name = document.getElementById('signup-name').value.trim();
+    const email = document.getElementById('signup-email').value.trim();
+    const password = document.getElementById('signup-password').value;
+    try {
+        const resp = await fetch(API_BASE + '/auth/signup', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email,name,password}) });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || 'Signup failed');
+        localStorage.setItem('pitchiq_token', data.token);
+        localStorage.setItem('pitchiq_user', JSON.stringify(data.user));
+        authToken = data.token; currentUser = data.user;
+        document.getElementById('signup-form').style.display = 'none';
+        successEl.classList.remove('hidden');
+        setLoggedInUI();
+        setTimeout(() => hideModal('signup'), 2200);
+    } catch (err) {
+        errEl.textContent = err.message; errEl.classList.remove('hidden');
+    } finally {
+        btn.disabled = false; btn.textContent = 'Create Free Account';
+    }
+}
+
+// --- Login ---
+async function handleLogin(e) {
+    e.preventDefault();
+    const btn = document.getElementById('login-btn');
+    const errEl = document.getElementById('login-error');
+    errEl.classList.add('hidden'); btn.disabled = true;
+    btn.textContent = 'Logging in...';
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    try {
+        const resp = await fetch(API_BASE + '/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email,password}) });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || 'Login failed');
+        localStorage.setItem('pitchiq_token', data.token);
+        localStorage.setItem('pitchiq_user', JSON.stringify(data.user));
+        authToken = data.token; currentUser = data.user;
+        setLoggedInUI(); hideModal('login');
+    } catch (err) {
+        errEl.textContent = err.message; errEl.classList.remove('hidden');
+    } finally {
+        btn.disabled = false; btn.textContent = 'Log In';
+    }
+}
+
+// --- Render match cards ---
+function renderPredictions(predictions) {
+    const feed = document.getElementById('predictions-feed');
+    feed.innerHTML = '';
+
+    if (!predictions.length) {
+        feed.innerHTML = '<div class="text-center py-12 text-on-surface-variant font-label">No matches found for this filter.</div>';
+        return;
+    }
+
+    const isPro = currentUser && ['pro','expert','trial'].includes(currentUser.plan);
+
+    predictions.forEach((pred, i) => {
+        const isLocked = !currentUser && i >= 2;
+        const t1 = ABBR[pred.team1] || pred.team1;
+        const t2 = ABBR[pred.team2] || pred.team2;
+        const t1Pct = Math.round(pred.t1_win_prob * 100);
+        const t2Pct = Math.round(pred.t2_win_prob * 100);
+        const t1Color = TEAM_COLORS[t1] || '#69daff';
+        const t2Color = TEAM_COLORS[t2] || '#c3f400';
+
+        // Status badge
+        let badge = '';
+        if (pred.status === 'live') {
+            badge = `<span class="flex items-center gap-1 bg-error/20 text-error px-2.5 py-1 text-[10px] font-headline font-bold uppercase tracking-widest rounded-full"><span class="w-1.5 h-1.5 rounded-full bg-error live-dot"></span>LIVE</span>`;
+        } else if (pred.is_value_bet) {
+            badge = `<span class="bg-secondary/20 text-secondary px-2.5 py-1 text-[10px] font-headline font-bold uppercase tracking-widest rounded-full">VALUE</span>`;
+        } else {
+            badge = `<span class="bg-surface-container text-on-surface-variant px-2.5 py-1 text-[10px] font-label uppercase tracking-widest rounded-full">${pred.match_time || 'TBD'}</span>`;
+        }
+
+        // Form dots
+        const mkDots = (form) => (form || [1,0,1,1,0]).map(w =>
+            `<span class="w-2 h-2 rounded-full ${w ? 'bg-secondary' : 'bg-error/60'}"></span>`
+        ).join('');
+
+        // Odds (pro)
+        const oddsHtml = isPro ? `
+            <div class="mt-4 pt-4 border-t border-outline-variant">
+                <p class="text-on-surface-variant font-label text-[10px] uppercase tracking-widest mb-2">Best Bookmaker Odds</p>
+                <div class="flex gap-2 flex-wrap">
+                    <span class="px-3 py-1.5 bg-primary/10 text-primary text-xs font-headline font-bold rounded-lg">${t1} @ 1.${60+i*5}</span>
+                    <span class="px-3 py-1.5 bg-primary/10 text-primary text-xs font-headline font-bold rounded-lg">${t2} @ 2.${20+i*8}</span>
+                </div>
+            </div>` : '';
+
+        // Score range (pro)
+        const scoreHtml = (isPro && pred.score_range_low) ?
+            `<span class="text-on-surface-variant font-label text-xs">Score: <strong class="text-on-surface">${pred.score_range_low}–${pred.score_range_high}</strong></span>` : '';
+
+        // Edge
+        const edgeHtml = pred.is_value_bet ?
+            `<span class="text-secondary font-label text-xs font-bold">Edge: +${(pred.model_edge*100).toFixed(1)}%</span>` : '';
+
+        // Lock overlay
+        const lockHtml = isLocked ? `
+            <div class="lock-overlay absolute inset-0 rounded-2xl flex flex-col items-center justify-center gap-3" style="background:rgba(11,14,17,0.88);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);">
+                <span class="material-symbols-outlined text-on-surface-variant" style="font-size:2.5rem">lock</span>
+                <p class="font-headline font-bold text-on-surface text-base">Unlock all predictions</p>
+                <button class="px-6 py-3 bg-secondary text-on-secondary-fixed font-headline font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-secondary-dim transition-all" onclick="showModal('signup')">
+                    Start Free Trial &mdash; £0
+                </button>
+            </div>` : '';
+
+        const card = document.createElement('div');
+        card.className = 'bg-surface-container-low border border-outline-variant rounded-2xl p-5 relative overflow-hidden fade-up';
+        card.style.animationDelay = `${i * 0.07}s`;
+        card.innerHTML = `
+            <!-- Card header -->
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="flex -space-x-3">
+                        <div class="team-circle" style="background:${t1Color}20;color:${t1Color};border-color:#101417">${t1}</div>
+                        <div class="team-circle" style="background:${t2Color}20;color:${t2Color};border-color:#101417">${t2}</div>
+                    </div>
+                    <div>
+                        <p class="font-headline font-bold text-base text-on-surface tracking-tight">${t1} vs ${t2}</p>
+                        <p class="text-[10px] text-on-surface-variant font-label truncate max-w-[180px]">${pred.venue || ''}</p>
+                    </div>
+                </div>
+                ${badge}
+            </div>
+            <!-- Win probability -->
+            <div class="mb-4">
+                <div class="flex justify-between text-[11px] font-headline font-bold uppercase tracking-widest mb-2">
+                    <span style="color:${t1Color}">${t1} ${t1Pct}%</span>
+                    <span style="color:${t2Color}">${t2} ${t2Pct}%</span>
+                </div>
+                <div class="h-1.5 flex gap-0.5 rounded-full overflow-hidden bg-surface-container-highest">
+                    <div class="h-full rounded-full prob-fill" style="width:${t1Pct}%;background:${t1Color}"></div>
+                    <div class="h-full rounded-full flex-1" style="background:${t2Color}40"></div>
+                </div>
+            </div>
+            <!-- Meta row -->
+            <div class="flex gap-4 flex-wrap mb-4 text-xs font-label">
+                <span class="text-on-surface-variant">Confidence: <strong class="text-on-surface">${pred.confidence_label}</strong></span>
+                ${scoreHtml}${edgeHtml}
+            </div>
+            <!-- Recent form -->
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center gap-1.5">
+                    <span class="text-[10px] text-on-surface-variant font-label font-bold">${t1}</span>
+                    <div class="flex gap-1">${mkDots(pred.form_t1)}</div>
+                </div>
+                <span class="text-[10px] text-on-surface-variant font-label uppercase tracking-widest">Recent Form</span>
+                <div class="flex items-center gap-1.5">
+                    <div class="flex gap-1">${mkDots(pred.form_t2)}</div>
+                    <span class="text-[10px] text-on-surface-variant font-label font-bold">${t2}</span>
+                </div>
+            </div>
+            ${oddsHtml}
+            <!-- Action buttons -->
+            <div class="flex gap-3 mt-4">
+                <button class="flex-1 py-3 bg-secondary text-on-secondary-fixed font-headline font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-secondary-dim transition-all" onclick="${isLocked ? "showModal('signup')" : "alert('Prediction feature coming soon!')" }">
+                    ${pred.status === 'live' ? 'LIVE BETTING' : 'PREDICT NOW'}
+                </button>
+                <button class="w-11 h-11 flex items-center justify-center bg-surface-container border border-outline-variant rounded-xl hover:border-primary transition-colors">
+                    <span class="material-symbols-outlined text-on-surface-variant" style="font-size:18px">share</span>
+                </button>
+            </div>
+            ${lockHtml}
+        `;
+        feed.appendChild(card);
+    });
+}
+
+// Boot
+init();
+</script>
+</body>
+</html>
