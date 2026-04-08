@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>PitchIQ — IPL Match Predictions</title>
-<meta name="description" content="ML-powered IPL match predictions with win probabilities, bookmaker odds, and value bet detection."/>
+<title>PitchIQ — AI vs Market</title>
+<meta name="description" content="See what the AI predicts vs what the bookmakers price. Spot the gap, find the value."/>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
@@ -129,26 +129,26 @@ tailwind.config = {
         </span>
         <span class="text-secondary font-headline text-xs font-bold uppercase tracking-widest">MATCH 34 · T20</span>
       </div>
-      <h2 class="font-headline font-bold text-4xl lg:text-6xl leading-none tracking-tighter mb-6">
-        MI vs CSK:<br/><span class="text-primary">EL CL&#193;SICO OF IPL</span>
+      <h2 class="font-headline font-bold text-4xl lg:text-6xl leading-none tracking-tighter mb-4">
+        AI prediction.<br/><span class="text-primary">Bookmaker price.</span><br/><span class="text-secondary">You decide.</span>
       </h2>
-      <div class="mb-6 max-w-sm">
-        <div class="flex justify-between text-xs font-headline font-bold uppercase tracking-widest mb-2">
-          <span class="text-primary">Mumbai 62%</span>
-          <span class="text-secondary">Chennai 38%</span>
+      <p class="text-on-surface-variant font-label text-base mb-7 max-w-md leading-relaxed">See what our ML model predicts vs what the bookmakers are pricing. Where they disagree — that's your edge.</p>
+      <div class="flex flex-wrap gap-6 mb-7">
+        <div class="flex items-center gap-3 px-4 py-3 bg-surface-container border border-outline-variant rounded-xl">
+          <span class="font-headline font-bold text-2xl text-secondary">74%</span>
+          <div><p class="text-[10px] text-on-surface-variant font-label uppercase tracking-widest">Model accuracy</p><p class="text-xs text-on-surface font-label">this season</p></div>
         </div>
-        <div class="h-2 flex gap-0.5 overflow-hidden bg-surface-container rounded-full">
-          <div class="h-full bg-primary rounded-full prob-fill" style="width:62%"></div>
-          <div class="h-full bg-secondary rounded-full flex-1"></div>
+        <div class="flex items-center gap-3 px-4 py-3 bg-surface-container border border-outline-variant rounded-xl">
+          <span class="font-headline font-bold text-2xl text-primary">23</span>
+          <div><p class="text-[10px] text-on-surface-variant font-label uppercase tracking-widest">Value bets</p><p class="text-xs text-on-surface font-label">identified vs market</p></div>
         </div>
-      </div>
-      <div class="flex flex-wrap gap-8 mb-7 text-sm">
-        <div><p class="text-on-surface-variant font-label text-[10px] uppercase tracking-widest mb-1">Model Accuracy</p><p class="font-headline font-bold text-on-surface">74%</p></div>
-        <div><p class="text-on-surface-variant font-label text-[10px] uppercase tracking-widest mb-1">Season Predictions</p><p class="font-headline font-bold text-on-surface">148</p></div>
-        <div><p class="text-on-surface-variant font-label text-[10px] uppercase tracking-widest mb-1">Value Bets Found</p><p class="font-headline font-bold text-secondary">23</p></div>
+        <div class="flex items-center gap-3 px-4 py-3 bg-surface-container border border-outline-variant rounded-xl">
+          <span class="font-headline font-bold text-2xl text-on-surface">6</span>
+          <div><p class="text-[10px] text-on-surface-variant font-label uppercase tracking-widest">Bookmakers</p><p class="text-xs text-on-surface font-label">aggregated live</p></div>
+        </div>
       </div>
       <button class="flex items-center gap-2 px-7 py-4 bg-secondary text-on-secondary-fixed font-headline font-bold uppercase tracking-widest text-sm rounded-xl hover:bg-secondary-dim transition-all" onclick="showModal('signup')">
-        GET FREE PREDICTIONS <span class="material-symbols-outlined" style="font-size:18px">trending_up</span>
+        SEE TODAY'S PREDICTIONS <span class="material-symbols-outlined" style="font-size:18px">arrow_forward</span>
       </button>
     </div>
   </section>
@@ -217,19 +217,20 @@ tailwind.config = {
         </div>
       </div>
 
-      <!-- Upgrade CTA -->
-      <div class="bg-surface-container-low border border-outline-variant rounded-2xl p-5" style="background:linear-gradient(135deg,rgba(105,218,255,0.06),#101417,rgba(195,244,0,0.06))">
-        <p class="font-headline font-bold text-base text-on-surface mb-1">Upgrade to Pro</p>
-        <p class="text-on-surface-variant text-xs font-label mb-4">Unlock bookmaker odds &amp; value alerts</p>
-        <ul class="space-y-2 mb-5">
-          <li class="flex items-center gap-2 text-xs font-label text-on-surface"><span class="material-symbols-outlined text-secondary fill-icon" style="font-size:16px">check_circle</span>All match predictions</li>
-          <li class="flex items-center gap-2 text-xs font-label text-on-surface"><span class="material-symbols-outlined text-secondary fill-icon" style="font-size:16px">check_circle</span>6 bookmaker odds feeds</li>
-          <li class="flex items-center gap-2 text-xs font-label text-on-surface"><span class="material-symbols-outlined text-secondary fill-icon" style="font-size:16px">check_circle</span>Value bet alerts + edge %</li>
-          <li class="flex items-center gap-2 text-xs font-label text-on-surface"><span class="material-symbols-outlined text-secondary fill-icon" style="font-size:16px">check_circle</span>Score range predictions</li>
-          <li class="flex items-center gap-2 text-xs font-label text-on-surface"><span class="material-symbols-outlined text-secondary fill-icon" style="font-size:16px">check_circle</span>Daily email digest</li>
+      <!-- What you get free -->
+      <div class="bg-surface-container-low border border-outline-variant rounded-2xl p-5">
+        <p class="text-on-surface-variant font-label text-[10px] uppercase tracking-widest mb-3">Free includes</p>
+        <ul class="space-y-2 mb-4">
+          <li class="flex items-center gap-2 text-xs font-label text-on-surface"><span class="material-symbols-outlined text-secondary fill-icon" style="font-size:15px">check_circle</span>AI win prediction</li>
+          <li class="flex items-center gap-2 text-xs font-label text-on-surface"><span class="material-symbols-outlined text-secondary fill-icon" style="font-size:15px">check_circle</span>Live bookmaker prices</li>
+          <li class="flex items-center gap-2 text-xs font-label text-on-surface"><span class="material-symbols-outlined text-secondary fill-icon" style="font-size:15px">check_circle</span>AI vs market edge %</li>
+          <li class="flex items-center gap-2 text-xs font-label text-on-surface-variant"><span class="material-symbols-outlined text-outline" style="font-size:15px">radio_button_unchecked</span><span>2 matches/day only</span></li>
         </ul>
-        <button class="w-full py-3 bg-secondary text-on-secondary-fixed font-headline font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-secondary-dim transition-all" onclick="showModal('pricing')">Start 7-day trial · Free</button>
-        <p class="text-center text-[10px] text-on-surface-variant font-label mt-2">Then £9/mo · Cancel anytime</p>
+        <div class="border-t border-outline-variant pt-4">
+          <p class="text-on-surface font-headline font-bold text-sm mb-1">Pro — all matches</p>
+          <p class="text-on-surface-variant text-[10px] font-label mb-3">Every IPL match, every day. Plus email alerts when value appears.</p>
+          <button class="w-full py-3 bg-secondary text-on-secondary-fixed font-headline font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-secondary-dim transition-all" onclick="showModal('pricing')">Upgrade · £9/mo</button>
+        </div>
       </div>
     </aside>
   </div>
@@ -380,13 +381,59 @@ let freeRemaining = 2;
 let currentTab = 'all';
 let allPredictions = [];
 
-// --- Sample predictions ---
+// --- Sample predictions (with bookmaker odds) ---
+// odds_t1/odds_t2 = best decimal odds available; implied = 1/odds
 const SAMPLE_PREDICTIONS = [
-    { team1:'Mumbai Indians', team2:'Chennai Super Kings', venue:'Wankhede Stadium, Mumbai', t1_win_prob:0.62, t2_win_prob:0.38, confidence:0.78, confidence_label:'High', score_range_low:155, score_range_high:192, model_breakdown:{xgboost:0.65,lightgbm:0.60,logistic_regression:0.58}, is_value_bet:true, model_edge:0.08, match_time:'19:30', form_t1:[1,1,0,1,1], form_t2:[1,0,1,0,1], status:'live' },
-    { team1:'Kolkata Knight Riders', team2:'Royal Challengers Bangalore', venue:'Eden Gardens, Kolkata', t1_win_prob:0.55, t2_win_prob:0.45, confidence:0.52, confidence_label:'Medium', score_range_low:162, score_range_high:198, model_breakdown:{xgboost:0.58,lightgbm:0.53,logistic_regression:0.50}, is_value_bet:false, model_edge:0.02, match_time:'15:30', form_t1:[1,0,1,1,0], form_t2:[0,1,1,0,1], status:'upcoming' },
-    { team1:'Rajasthan Royals', team2:'Delhi Capitals', venue:'Sawai Mansingh Stadium, Jaipur', t1_win_prob:0.71, t2_win_prob:0.29, confidence:0.85, confidence_label:'High', score_range_low:148, score_range_high:185, model_breakdown:{xgboost:0.74,lightgbm:0.70,logistic_regression:0.65}, is_value_bet:true, model_edge:0.12, match_time:'19:30', form_t1:[1,1,1,0,1], form_t2:[0,0,1,0,0], status:'upcoming' },
-    { team1:'Gujarat Titans', team2:'Punjab Kings', venue:'Narendra Modi Stadium, Ahmedabad', t1_win_prob:0.58, t2_win_prob:0.42, confidence:0.61, confidence_label:'Medium', score_range_low:168, score_range_high:210, model_breakdown:{xgboost:0.60,lightgbm:0.57,logistic_regression:0.54}, is_value_bet:false, model_edge:0.03, match_time:'19:30', form_t1:[1,0,1,0,1], form_t2:[0,1,0,1,0], status:'upcoming' },
-    { team1:'Sunrisers Hyderabad', team2:'Lucknow Super Giants', venue:'Rajiv Gandhi Intl Stadium, Hyderabad', t1_win_prob:0.49, t2_win_prob:0.51, confidence:0.35, confidence_label:'Low', score_range_low:158, score_range_high:195, model_breakdown:{xgboost:0.52,lightgbm:0.47,logistic_regression:0.45}, is_value_bet:false, model_edge:-0.01, match_time:'15:30', form_t1:[0,1,0,1,0], form_t2:[1,0,1,1,0], status:'upcoming' },
+    {
+        team1:'Mumbai Indians', team2:'Chennai Super Kings',
+        venue:'Wankhede Stadium, Mumbai',
+        t1_win_prob:0.62, t2_win_prob:0.38,
+        confidence:0.78, confidence_label:'High',
+        score_range_low:155, score_range_high:192,
+        is_value_bet:false, match_time:'19:30',
+        form_t1:[1,1,0,1,1], form_t2:[1,0,1,0,1], status:'live',
+        odds_t1:1.62, odds_t2:2.45, odds_book:'Bet365'
+    },
+    {
+        team1:'Kolkata Knight Riders', team2:'Royal Challengers Bangalore',
+        venue:'Eden Gardens, Kolkata',
+        t1_win_prob:0.55, t2_win_prob:0.45,
+        confidence:0.52, confidence_label:'Medium',
+        score_range_low:162, score_range_high:198,
+        is_value_bet:false, match_time:'15:30',
+        form_t1:[1,0,1,1,0], form_t2:[0,1,1,0,1], status:'upcoming',
+        odds_t1:1.85, odds_t2:2.10, odds_book:'Betfair'
+    },
+    {
+        team1:'Rajasthan Royals', team2:'Delhi Capitals',
+        venue:'Sawai Mansingh Stadium, Jaipur',
+        t1_win_prob:0.71, t2_win_prob:0.29,
+        confidence:0.85, confidence_label:'High',
+        score_range_low:148, score_range_high:185,
+        is_value_bet:true, match_time:'19:30',
+        form_t1:[1,1,1,0,1], form_t2:[0,0,1,0,0], status:'upcoming',
+        odds_t1:1.44, odds_t2:3.10, odds_book:'Bet365'
+    },
+    {
+        team1:'Gujarat Titans', team2:'Punjab Kings',
+        venue:'Narendra Modi Stadium, Ahmedabad',
+        t1_win_prob:0.58, t2_win_prob:0.42,
+        confidence:0.61, confidence_label:'Medium',
+        score_range_low:168, score_range_high:210,
+        is_value_bet:false, match_time:'19:30',
+        form_t1:[1,0,1,0,1], form_t2:[0,1,0,1,0], status:'upcoming',
+        odds_t1:1.75, odds_t2:2.20, odds_book:'William Hill'
+    },
+    {
+        team1:'Sunrisers Hyderabad', team2:'Lucknow Super Giants',
+        venue:'Rajiv Gandhi Intl Stadium, Hyderabad',
+        t1_win_prob:0.49, t2_win_prob:0.51,
+        confidence:0.35, confidence_label:'Low',
+        score_range_low:158, score_range_high:195,
+        is_value_bet:false, match_time:'15:30',
+        form_t1:[0,1,0,1,0], form_t2:[1,0,1,1,0], status:'upcoming',
+        odds_t1:2.05, odds_t2:1.90, odds_book:'Betway'
+    },
 ];
 
 const ABBR = {
@@ -554,17 +601,15 @@ async function handleLogin(e) {
     }
 }
 
-// --- Render match cards ---
+// --- Render match cards (AI Prediction vs Bookmaker Price) ---
 function renderPredictions(predictions) {
     const feed = document.getElementById('predictions-feed');
     feed.innerHTML = '';
 
     if (!predictions.length) {
-        feed.innerHTML = '<div class="text-center py-12 text-on-surface-variant font-label">No matches found for this filter.</div>';
+        feed.innerHTML = '<div class="text-center py-12 text-on-surface-variant font-label">No matches for this filter.</div>';
         return;
     }
-
-    const isPro = currentUser && ['pro','expert','trial'].includes(currentUser.plan);
 
     predictions.forEach((pred, i) => {
         const isLocked = !currentUser && i >= 2;
@@ -575,100 +620,144 @@ function renderPredictions(predictions) {
         const t1Color = TEAM_COLORS[t1] || '#69daff';
         const t2Color = TEAM_COLORS[t2] || '#c3f400';
 
+        // Bookmaker implied probabilities
+        const odds1 = pred.odds_t1 || (1 / pred.t1_win_prob * 0.95);
+        const odds2 = pred.odds_t2 || (1 / pred.t2_win_prob * 0.95);
+        const impl1 = Math.round((1 / odds1) * 100);
+        const impl2 = Math.round((1 / odds2) * 100);
+
+        // Edge: how much our model differs from market implied
+        const edge1 = t1Pct - impl1;  // positive = we rate higher than market
+        const edge2 = t2Pct - impl2;
+
+        // Best edge direction
+        const bestEdge = Math.abs(edge1) >= Math.abs(edge2) ? { team: t1, edge: edge1 } : { team: t2, edge: edge2 };
+        const isValue = bestEdge.edge > 2;  // >2% edge = meaningful value
+        const isAligned = Math.abs(bestEdge.edge) <= 2;
+
         // Status badge
         let badge = '';
         if (pred.status === 'live') {
-            badge = `<span class="flex items-center gap-1 bg-error/20 text-error px-2.5 py-1 text-[10px] font-headline font-bold uppercase tracking-widest rounded-full"><span class="w-1.5 h-1.5 rounded-full bg-error live-dot"></span>LIVE</span>`;
-        } else if (pred.is_value_bet) {
-            badge = `<span class="bg-secondary/20 text-secondary px-2.5 py-1 text-[10px] font-headline font-bold uppercase tracking-widest rounded-full">VALUE</span>`;
+            badge = `<span class="flex items-center gap-1.5 bg-error/15 text-error px-2.5 py-1 text-[10px] font-headline font-bold uppercase tracking-widest rounded-full border border-error/30"><span class="w-1.5 h-1.5 rounded-full bg-error live-dot"></span>LIVE</span>`;
+        } else if (isValue || pred.is_value_bet) {
+            badge = `<span class="bg-secondary/15 text-secondary px-2.5 py-1 text-[10px] font-headline font-bold uppercase tracking-widest rounded-full border border-secondary/30">VALUE BET</span>`;
         } else {
             badge = `<span class="bg-surface-container text-on-surface-variant px-2.5 py-1 text-[10px] font-label uppercase tracking-widest rounded-full">${pred.match_time || 'TBD'}</span>`;
         }
 
-        // Form dots
-        const mkDots = (form) => (form || [1,0,1,1,0]).map(w =>
-            `<span class="w-2 h-2 rounded-full ${w ? 'bg-secondary' : 'bg-error/60'}"></span>`
-        ).join('');
-
-        // Odds (pro)
-        const oddsHtml = isPro ? `
-            <div class="mt-4 pt-4 border-t border-outline-variant">
-                <p class="text-on-surface-variant font-label text-[10px] uppercase tracking-widest mb-2">Best Bookmaker Odds</p>
-                <div class="flex gap-2 flex-wrap">
-                    <span class="px-3 py-1.5 bg-primary/10 text-primary text-xs font-headline font-bold rounded-lg">${t1} @ 1.${60+i*5}</span>
-                    <span class="px-3 py-1.5 bg-primary/10 text-primary text-xs font-headline font-bold rounded-lg">${t2} @ 2.${20+i*8}</span>
-                </div>
-            </div>` : '';
-
-        // Score range (pro)
-        const scoreHtml = (isPro && pred.score_range_low) ?
-            `<span class="text-on-surface-variant font-label text-xs">Score: <strong class="text-on-surface">${pred.score_range_low}–${pred.score_range_high}</strong></span>` : '';
-
-        // Edge
-        const edgeHtml = pred.is_value_bet ?
-            `<span class="text-secondary font-label text-xs font-bold">Edge: +${(pred.model_edge*100).toFixed(1)}%</span>` : '';
+        // Alignment indicator
+        let alignHtml = '';
+        if (isValue) {
+            alignHtml = `
+                <div class="flex items-center gap-2 px-3 py-2 bg-secondary/10 border border-secondary/20 rounded-xl">
+                    <span class="material-symbols-outlined text-secondary fill-icon" style="font-size:16px">trending_up</span>
+                    <span class="text-secondary font-headline font-bold text-xs">+${bestEdge.edge.toFixed(1)}% EDGE on ${bestEdge.team} vs market</span>
+                </div>`;
+        } else if (isAligned) {
+            alignHtml = `
+                <div class="flex items-center gap-2 px-3 py-2 bg-surface-container border border-outline-variant rounded-xl">
+                    <span class="material-symbols-outlined text-on-surface-variant fill-icon" style="font-size:16px">check_circle</span>
+                    <span class="text-on-surface-variant font-label text-xs">AI and market are <strong class="text-on-surface">aligned</strong> on this match</span>
+                </div>`;
+        } else {
+            alignHtml = `
+                <div class="flex items-center gap-2 px-3 py-2 bg-primary/10 border border-primary/20 rounded-xl">
+                    <span class="material-symbols-outlined text-primary" style="font-size:16px">info</span>
+                    <span class="text-primary font-label text-xs">${bestEdge.edge > 0 ? 'AI rates' : 'Market favours'} ${bestEdge.team} slightly stronger</span>
+                </div>`;
+        }
 
         // Lock overlay
         const lockHtml = isLocked ? `
-            <div class="lock-overlay absolute inset-0 rounded-2xl flex flex-col items-center justify-center gap-3" style="background:rgba(11,14,17,0.88);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);">
+            <div class="lock-overlay absolute inset-0 rounded-2xl flex flex-col items-center justify-center gap-3" style="background:rgba(11,14,17,0.9);backdrop-filter:blur(12px);">
                 <span class="material-symbols-outlined text-on-surface-variant" style="font-size:2.5rem">lock</span>
-                <p class="font-headline font-bold text-on-surface text-base">Unlock all predictions</p>
-                <button class="px-6 py-3 bg-secondary text-on-secondary-fixed font-headline font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-secondary-dim transition-all" onclick="showModal('signup')">
-                    Start Free Trial &mdash; £0
+                <p class="font-headline font-bold text-on-surface text-sm">Sign up to see all matches</p>
+                <p class="text-on-surface-variant text-xs font-label text-center px-8">Free users see 2 matches per day with full AI + odds data</p>
+                <button class="mt-1 px-6 py-3 bg-secondary text-on-secondary-fixed font-headline font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-secondary-dim transition-all" onclick="showModal('signup')">
+                    Join Free &mdash; No card needed
                 </button>
             </div>` : '';
 
         const card = document.createElement('div');
-        card.className = 'bg-surface-container-low border border-outline-variant rounded-2xl p-5 relative overflow-hidden fade-up';
+        card.className = 'bg-surface-container-low border border-outline-variant rounded-2xl p-5 lg:p-6 relative overflow-hidden fade-up';
         card.style.animationDelay = `${i * 0.07}s`;
+        if (isValue || pred.is_value_bet) card.style.borderColor = 'rgba(195,244,0,0.3)';
+
         card.innerHTML = `
-            <!-- Card header -->
-            <div class="flex justify-between items-start mb-4">
+            <!-- Header -->
+            <div class="flex justify-between items-start mb-5">
                 <div class="flex items-center gap-3">
                     <div class="flex -space-x-3">
-                        <div class="team-circle" style="background:${t1Color}20;color:${t1Color};border-color:#101417">${t1}</div>
-                        <div class="team-circle" style="background:${t2Color}20;color:${t2Color};border-color:#101417">${t2}</div>
+                        <div class="team-circle" style="background:${t1Color}18;color:${t1Color};border-color:#101417">${t1}</div>
+                        <div class="team-circle" style="background:${t2Color}18;color:${t2Color};border-color:#101417">${t2}</div>
                     </div>
                     <div>
-                        <p class="font-headline font-bold text-base text-on-surface tracking-tight">${t1} vs ${t2}</p>
-                        <p class="text-[10px] text-on-surface-variant font-label truncate max-w-[180px]">${pred.venue || ''}</p>
+                        <p class="font-headline font-bold text-base text-on-surface tracking-tight">${t1} <span class="text-on-surface-variant font-normal">vs</span> ${t2}</p>
+                        <p class="text-[10px] text-on-surface-variant font-label mt-0.5">${pred.venue || ''}</p>
                     </div>
                 </div>
                 ${badge}
             </div>
-            <!-- Win probability -->
-            <div class="mb-4">
-                <div class="flex justify-between text-[11px] font-headline font-bold uppercase tracking-widest mb-2">
-                    <span style="color:${t1Color}">${t1} ${t1Pct}%</span>
-                    <span style="color:${t2Color}">${t2} ${t2Pct}%</span>
+
+            <!-- AI PREDICTION vs BOOKMAKER PRICE — the core comparison -->
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <!-- AI Prediction column -->
+                <div class="bg-surface-container rounded-xl p-4">
+                    <p class="text-[9px] font-label font-bold uppercase tracking-widest text-on-surface-variant mb-3">AI Prediction</p>
+                    <div class="space-y-2.5">
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-xs font-headline font-bold" style="color:${t1Color}">${t1}</span>
+                                <span class="text-sm font-headline font-bold" style="color:${t1Color}">${t1Pct}%</span>
+                            </div>
+                            <div class="h-1 bg-surface-container-highest rounded-full overflow-hidden">
+                                <div class="h-full rounded-full prob-fill" style="width:${t1Pct}%;background:${t1Color}"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-xs font-headline font-bold" style="color:${t2Color}">${t2}</span>
+                                <span class="text-sm font-headline font-bold" style="color:${t2Color}">${t2Pct}%</span>
+                            </div>
+                            <div class="h-1 bg-surface-container-highest rounded-full overflow-hidden">
+                                <div class="h-full rounded-full prob-fill" style="width:${t2Pct}%;background:${t2Color}"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-[9px] text-on-surface-variant font-label mt-3">${pred.confidence_label} confidence</p>
                 </div>
-                <div class="h-1.5 flex gap-0.5 rounded-full overflow-hidden bg-surface-container-highest">
-                    <div class="h-full rounded-full prob-fill" style="width:${t1Pct}%;background:${t1Color}"></div>
-                    <div class="h-full rounded-full flex-1" style="background:${t2Color}40"></div>
+
+                <!-- Bookmaker Price column -->
+                <div class="bg-surface-container rounded-xl p-4">
+                    <p class="text-[9px] font-label font-bold uppercase tracking-widest text-on-surface-variant mb-3">Best Odds <span class="normal-case font-normal">(${pred.odds_book || 'Bet365'})</span></p>
+                    <div class="space-y-2.5">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-headline font-bold text-on-surface">${t1}</span>
+                            <div class="text-right">
+                                <span class="text-sm font-headline font-bold text-primary">@ ${odds1.toFixed(2)}</span>
+                                <p class="text-[9px] text-on-surface-variant font-label">${impl1}% implied</p>
+                            </div>
+                        </div>
+                        <div class="h-px bg-outline-variant"></div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-headline font-bold text-on-surface">${t2}</span>
+                            <div class="text-right">
+                                <span class="text-sm font-headline font-bold text-primary">@ ${odds2.toFixed(2)}</span>
+                                <p class="text-[9px] text-on-surface-variant font-label">${impl2}% implied</p>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-[9px] text-on-surface-variant font-label mt-3">Live · updates every 5m</p>
                 </div>
             </div>
-            <!-- Meta row -->
-            <div class="flex gap-4 flex-wrap mb-4 text-xs font-label">
-                <span class="text-on-surface-variant">Confidence: <strong class="text-on-surface">${pred.confidence_label}</strong></span>
-                ${scoreHtml}${edgeHtml}
-            </div>
-            <!-- Recent form -->
-            <div class="flex justify-between items-center mb-4">
-                <div class="flex items-center gap-1.5">
-                    <span class="text-[10px] text-on-surface-variant font-label font-bold">${t1}</span>
-                    <div class="flex gap-1">${mkDots(pred.form_t1)}</div>
-                </div>
-                <span class="text-[10px] text-on-surface-variant font-label uppercase tracking-widest">Recent Form</span>
-                <div class="flex items-center gap-1.5">
-                    <div class="flex gap-1">${mkDots(pred.form_t2)}</div>
-                    <span class="text-[10px] text-on-surface-variant font-label font-bold">${t2}</span>
-                </div>
-            </div>
-            ${oddsHtml}
-            <!-- Action buttons -->
-            <div class="flex gap-3 mt-4">
-                <button class="flex-1 py-3 bg-secondary text-on-secondary-fixed font-headline font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-secondary-dim transition-all" onclick="${isLocked ? "showModal('signup')" : "alert('Prediction feature coming soon!')" }">
-                    ${pred.status === 'live' ? 'LIVE BETTING' : 'PREDICT NOW'}
+
+            <!-- Alignment signal -->
+            ${alignHtml}
+
+            <!-- Actions -->
+            <div class="flex gap-2 mt-4">
+                <button class="flex-1 py-3 bg-secondary text-on-secondary-fixed font-headline font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-secondary-dim transition-all">
+                    ${pred.status === 'live' ? 'View Live Odds' : 'Full Analysis'}
                 </button>
                 <button class="w-11 h-11 flex items-center justify-center bg-surface-container border border-outline-variant rounded-xl hover:border-primary transition-colors">
                     <span class="material-symbols-outlined text-on-surface-variant" style="font-size:18px">share</span>
