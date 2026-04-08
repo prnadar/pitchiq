@@ -65,8 +65,8 @@ tailwind.config = {
   </div>
   <nav class="flex-1 p-3 space-y-0.5 overflow-y-auto sidebar-sb">
     <a class="flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-container text-primary font-headline font-bold text-sm cursor-pointer" onclick="scrollToFeed()"><span class="material-symbols-outlined fill-icon">dynamic_feed</span>Match Feed</a>
-    <a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all font-headline font-bold text-sm cursor-pointer" onclick="showComingSoon('My Predictions')"><span class="material-symbols-outlined">query_stats</span>My Predictions</a>
-    <a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all font-headline font-bold text-sm cursor-pointer" onclick="showComingSoon('Leaderboard')"><span class="material-symbols-outlined">leaderboard</span>Leaderboard</a>
+    <a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all font-headline font-bold text-sm cursor-pointer" onclick="showMyPredictions()"><span class="material-symbols-outlined">query_stats</span>My Predictions</a>
+    <a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all font-headline font-bold text-sm cursor-pointer" onclick="showLeaderboard()"><span class="material-symbols-outlined">leaderboard</span>Leaderboard</a>
     <a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all font-headline font-bold text-sm cursor-pointer" onclick="showComingSoon('Analytics')"><span class="material-symbols-outlined">analytics</span>Analytics</a>
     <div class="my-3 border-t border-outline-variant"></div>
     <a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all font-headline font-bold text-sm cursor-pointer" onclick="showComingSoon('Settings')"><span class="material-symbols-outlined">settings</span>Settings</a>
@@ -245,8 +245,8 @@ tailwind.config = {
 <!-- BOTTOM NAV (mobile) -->
 <nav class="lg:hidden fixed bottom-0 w-full h-[68px] glass-nav border-t border-outline-variant z-50 flex justify-around items-center px-2">
   <a class="flex flex-col items-center justify-center text-secondary gap-0.5 cursor-pointer" onclick="scrollToFeed()"><span class="material-symbols-outlined fill-icon">dynamic_feed</span><span class="font-label text-[9px] font-medium uppercase">Feed</span></a>
-  <a class="flex flex-col items-center justify-center text-on-surface-variant gap-0.5 cursor-pointer" onclick="showComingSoon('My Predictions')"><span class="material-symbols-outlined">query_stats</span><span class="font-label text-[9px] font-medium uppercase">Picks</span></a>
-  <a class="flex flex-col items-center justify-center text-on-surface-variant gap-0.5 cursor-pointer" onclick="showComingSoon('Leaderboard')"><span class="material-symbols-outlined">leaderboard</span><span class="font-label text-[9px] font-medium uppercase">Board</span></a>
+  <a class="flex flex-col items-center justify-center text-on-surface-variant gap-0.5 cursor-pointer" onclick="showMyPredictions()"><span class="material-symbols-outlined">query_stats</span><span class="font-label text-[9px] font-medium uppercase">Picks</span></a>
+  <a class="flex flex-col items-center justify-center text-on-surface-variant gap-0.5 cursor-pointer" onclick="showLeaderboard()"><span class="material-symbols-outlined">leaderboard</span><span class="font-label text-[9px] font-medium uppercase">Board</span></a>
   <a class="flex flex-col items-center justify-center text-on-surface-variant gap-0.5 cursor-pointer" onclick="showModal('signup')"><span class="material-symbols-outlined">workspace_premium</span><span class="font-label text-[9px] font-medium uppercase">Pro</span></a>
 </nav>
 
@@ -260,8 +260,8 @@ tailwind.config = {
     </div>
     <nav class="flex-1 p-3 space-y-0.5">
       <a class="flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-container text-primary font-headline font-bold text-sm cursor-pointer" onclick="closeMobileSidebar();scrollToFeed()"><span class="material-symbols-outlined fill-icon">dynamic_feed</span>Match Feed</a>
-      <a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant font-headline font-bold text-sm cursor-pointer" onclick="closeMobileSidebar();showComingSoon('My Predictions')"><span class="material-symbols-outlined">query_stats</span>My Predictions</a>
-      <a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant font-headline font-bold text-sm cursor-pointer" onclick="closeMobileSidebar();showComingSoon('Leaderboard')"><span class="material-symbols-outlined">leaderboard</span>Leaderboard</a>
+      <a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant font-headline font-bold text-sm cursor-pointer" onclick="showMyPredictions()"><span class="material-symbols-outlined">query_stats</span>My Predictions</a>
+      <a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant font-headline font-bold text-sm cursor-pointer" onclick="showLeaderboard()"><span class="material-symbols-outlined">leaderboard</span>Leaderboard</a>
     </nav>
     <div class="p-4 border-t border-outline-variant space-y-2">
       <button class="w-full py-3 bg-secondary text-on-secondary-fixed font-headline font-bold text-xs uppercase tracking-widest rounded-xl" onclick="showModal('signup');closeMobileSidebar()">Start Free Trial</button>
@@ -509,7 +509,9 @@ function buildCard(pred, i, isLocked) {
         </div>` : '';
 
     const card = document.createElement('div');
+    const predJson = encodeURIComponent(JSON.stringify({match_id: pred.match_id, team1: pred.team1, team2: pred.team2, venue: pred.venue, t1_win_prob: pred.t1_win_prob, t2_win_prob: pred.t2_win_prob, confidence_label: pred.confidence_label, odds_t1: pred.odds_t1, odds_t2: pred.odds_t2}));
     card.className = 'bg-surface-container-low border border-outline-variant rounded-2xl overflow-hidden relative fade-up';
+    card.dataset.predJson = predJson;
     card.style.animationDelay = `${i * 0.07}s`;
     if (isValue || pred.is_value_bet) card.style.borderColor = 'rgba(195,244,0,0.35)';
 
@@ -579,6 +581,26 @@ function buildCard(pred, i, isLocked) {
           </div>
           <div class="flex gap-1 mt-3">${formDots(pred.form_t2)}</div>
           <p class="text-[9px] text-on-surface-variant font-label mt-1">Odds update regularly</p>
+          ${(() => {
+            if (!pred.score_range_t1) return '';
+            const [lo1, hi1] = pred.score_range_t1;
+            const [lo2, hi2] = pred.score_range_t2;
+            const blur = !currentUser ? 'filter:blur(4px);user-select:none;pointer-events:none' : '';
+            return `<div class="mt-3 pt-2 border-t border-outline-variant/50 relative">
+                ${!currentUser ? '<span class="absolute -top-2 right-0 px-2 py-0.5 bg-secondary text-on-secondary-fixed font-headline font-bold text-[8px] uppercase rounded-full">Pro</span>' : ''}
+                <p class="text-[8px] font-label font-bold uppercase tracking-widest text-on-surface-variant mb-1">Expected Score</p>
+                <div style="${blur}">
+                    <div class="flex justify-between items-center">
+                        <span class="text-[10px] font-headline font-bold" style="color:${t1Col}">${t1}</span>
+                        <span class="text-[10px] font-headline font-bold text-on-surface">${lo1}–${hi1}</span>
+                    </div>
+                    <div class="flex justify-between items-center mt-0.5">
+                        <span class="text-[10px] font-headline font-bold" style="color:${t2Col}">${t2}</span>
+                        <span class="text-[10px] font-headline font-bold text-on-surface">${lo2}–${hi2}</span>
+                    </div>
+                </div>
+            </div>`;
+          })()}
         </div>
       </div>
 
@@ -611,8 +633,8 @@ function buildCard(pred, i, isLocked) {
 
       <!-- Actions -->
       <div class="flex gap-2 mt-4 pt-1">
-        <button class="flex-1 py-3 bg-secondary text-on-secondary-fixed font-headline font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-secondary-dim transition-all">
-          ${pred.status === 'live' ? 'View Live Odds' : 'Full Analysis'}
+        <button class="flex-1 py-3 bg-secondary text-on-secondary-fixed font-headline font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-secondary-dim transition-all" onclick="savePrediction(this)">
+          ${pred.status === 'live' ? 'View Live Odds' : 'Save &amp; View'}
         </button>
         <button class="w-11 h-11 flex items-center justify-center bg-surface-container border border-outline-variant rounded-xl hover:border-primary transition-colors" onclick="shareCard(this,'${pred.team1} vs ${pred.team2}')">
           <span class="material-symbols-outlined text-on-surface-variant" style="font-size:18px">share</span>
@@ -865,6 +887,87 @@ async function handleLogin(e) {
         renderPredictions(filterPredictions(allPredictions));
     } catch(err){ errEl.textContent=err.message; errEl.classList.remove('hidden'); }
     finally{ btn.disabled=false; btn.textContent='Log In'; }
+}
+
+// ─── My Predictions ───────────────────────────────────────────────────────────
+function showMyPredictions() {
+    closeMobileSidebar && closeMobileSidebar();
+    const feed = document.getElementById('predictions-feed');
+    const saved = JSON.parse(localStorage.getItem('pitchiq_saved_preds') || '[]');
+    if (!saved.length) {
+        feed.innerHTML = `
+        <div class="text-center py-16 fade-up">
+          <span class="material-symbols-outlined text-on-surface-variant" style="font-size:48px">bookmarks</span>
+          <p class="font-headline font-bold text-on-surface mt-4 mb-2">No saved predictions yet</p>
+          <p class="text-sm text-on-surface-variant font-label mb-6">Click "Save" on any match card to track it here.</p>
+          <button class="px-6 py-3 bg-secondary text-on-secondary-fixed font-headline font-bold text-xs uppercase tracking-widest rounded-xl" onclick="loadPredictions()">Back to matches</button>
+        </div>`;
+        return;
+    }
+    renderPredictions(saved);
+}
+
+function savePrediction(btn) {
+    const card = btn.closest('[data-pred-json]');
+    if (!card) return;
+    const pred = JSON.parse(decodeURIComponent(card.dataset.predJson));
+    const saved = JSON.parse(localStorage.getItem('pitchiq_saved_preds') || '[]');
+    if (!saved.find(p => p.match_id === pred.match_id)) {
+        saved.unshift({...pred, saved_at: new Date().toISOString()});
+        localStorage.setItem('pitchiq_saved_preds', JSON.stringify(saved.slice(0, 30)));
+        if (authToken) {
+            fetch(API_BASE + '/predictions/save', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json','Authorization':'Bearer '+authToken},
+                body: JSON.stringify(pred)
+            }).catch(() => {});
+        }
+    }
+    btn.textContent = 'Saved \u2713';
+    btn.disabled = true;
+}
+
+// ─── Leaderboard ──────────────────────────────────────────────────────────────
+function showLeaderboard() {
+    closeMobileSidebar && closeMobileSidebar();
+    const TEAM_STATS = [
+        {team:'Mumbai Indians',abbr:'MI',wins:134,played:254,color:'#005da3'},
+        {team:'Chennai Super Kings',abbr:'CSK',wins:128,played:234,color:'#f5d20c'},
+        {team:'Kolkata Knight Riders',abbr:'KKR',wins:119,played:240,color:'#3a225d'},
+        {team:'Royal Challengers Bangalore',abbr:'RCB',wins:115,played:247,color:'#c8102e'},
+        {team:'Rajasthan Royals',abbr:'RR',wins:104,played:218,color:'#ea1a85'},
+        {team:'Sunrisers Hyderabad',abbr:'SRH',wins:99,played:197,color:'#f7552d'},
+        {team:'Delhi Capitals',abbr:'DC',wins:97,played:220,color:'#0078bc'},
+        {team:'Punjab Kings',abbr:'PBKS',wins:92,played:224,color:'#ed1f27'},
+    ].sort((a,b) => (b.wins/b.played) - (a.wins/a.played));
+
+    const rows = TEAM_STATS.map((t,i) => `
+    <div class="flex items-center gap-4 p-4 bg-surface-container-low border border-outline-variant rounded-xl">
+        <span class="font-headline font-bold text-on-surface-variant text-lg w-6 text-center">${i+1}</span>
+        <div class="w-9 h-9 rounded-full flex items-center justify-center font-headline font-bold text-xs shrink-0" style="background:${t.color}22;color:${t.color}">${t.abbr}</div>
+        <div class="flex-1">
+            <p class="font-headline font-bold text-sm text-on-surface">${t.team}</p>
+            <p class="text-[10px] text-on-surface-variant font-label">${t.wins}W from ${t.played} matches</p>
+        </div>
+        <div class="text-right">
+            <p class="font-headline font-bold text-base text-secondary">${Math.round(t.wins/t.played*100)}%</p>
+            <p class="text-[9px] text-on-surface-variant font-label">win rate</p>
+        </div>
+    </div>`).join('');
+
+    document.getElementById('predictions-feed').innerHTML = `
+    <div class="fade-up space-y-3 pb-28 lg:pb-8">
+        <div class="flex items-center justify-between mb-2">
+            <div>
+                <h3 class="font-headline font-bold text-lg text-on-surface">IPL All-Time Leaderboard</h3>
+                <p class="text-xs text-on-surface-variant font-label">Based on 1,152 matches from 2008\u20132024</p>
+            </div>
+            <button onclick="loadPredictions()" class="flex items-center gap-1.5 text-xs font-headline font-bold text-on-surface-variant hover:text-on-surface transition-colors">
+                <span class="material-symbols-outlined" style="font-size:16px">arrow_back</span>Back
+            </button>
+        </div>
+        ${rows}
+    </div>`;
 }
 
 // ─── Share ────────────────────────────────────────────────────────────────────

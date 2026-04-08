@@ -43,6 +43,29 @@ feature_builder: Optional[FeatureBuilder] = None
 predictor: Optional[EnsemblePredictor] = None
 reasoning_engine: ReasoningEngine = ReasoningEngine()
 
+# --- Rate limiting ---
+_DAILY_USAGE: dict[str, dict[str, int]] = {}
+
+# --- Saved predictions store ---
+_saved_predictions: dict[str, list[dict]] = {}
+
+
+def _check_usage(user: Optional[dict], client_ip: str) -> bool:
+    """Returns True if allowed, False if daily limit exceeded."""
+    if user and user.get("plan") in ("trial", "pro", "expert"):
+        return True  # unlimited for paid
+    key = user["id"] if user else client_ip
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    counts = _DAILY_USAGE.setdefault(key, {})
+    # Purge old dates
+    for d in list(counts.keys()):
+        if d != today:
+            del counts[d]
+    if counts.get(today, 0) >= 2:
+        return False
+    counts[today] = counts.get(today, 0) + 1
+    return True
+
 
 @app.on_event("startup")
 async def startup() -> None:
@@ -107,7 +130,11 @@ async def health() -> dict[str, Any]:
 
 
 @app.post("/predict")
-async def predict(req: PredictRequest) -> dict[str, Any]:
+async def predict(req: PredictRequest, request: Request, authorization: str = Header(default="")) -> dict[str, Any]:
+    user = _get_current_user(authorization)
+    client_ip = request.client.host if request.client else "unknown"
+    if not _check_usage(user, client_ip):
+        raise HTTPException(429, "Daily limit reached. Create a free account for unlimited access.")
     if not predictor or not feature_builder:
         raise HTTPException(503, "Models not loaded. Train first.")
 
@@ -214,9 +241,27 @@ async def matches_upcoming_with_predictions() -> dict[str, Any]:
         },
     ]
 
+    # Try live cricket API first; fall back to sample fixtures
+    try:
+        from backend.services.cricket import get_upcoming_matches
+        live = await get_upcoming_matches(days=7)
+        fixtures = [
+            {
+                "match_id": m["match_id"] or f"live-{i}",
+                "team1": m["team1"],
+                "team2": m["team2"],
+                "venue": m["venue"] or "TBC",
+                "match_time": m["match_time"] or "TBD",
+            }
+            for i, m in enumerate(live[:5])
+            if m["team1"] and m["team2"]
+        ] or SAMPLE_FIXTURES
+    except Exception:
+        fixtures = SAMPLE_FIXTURES
+
     results = []
 
-    for fixture in SAMPLE_FIXTURES:
+    for fixture in fixtures:
         t1 = fixture["team1"]
         t2 = fixture["team2"]
         venue = fixture["venue"]
@@ -260,10 +305,26 @@ async def matches_upcoming_with_predictions() -> dict[str, Any]:
                 confidence_label=confidence_label,
             )
 
+        # Score range estimates
+        score_range_t1 = feature_builder.estimate_score_range(t1, venue) if feature_builder else (150, 178)
+        score_range_t2 = feature_builder.estimate_score_range(t2, venue) if feature_builder else (150, 178)
+
         # Generate odds with ~5% bookmaker margin (overround)
         MARGIN = 1.05
         odds_t1 = round(MARGIN / t1_prob, 2) if t1_prob > 0 else 2.0
         odds_t2 = round(MARGIN / t2_prob, 2) if t2_prob > 0 else 2.0
+
+        # Try to merge real bookmaker odds
+        try:
+            from backend.services.odds import get_live_odds
+            live_odds_list = await get_live_odds()
+            for lo in live_odds_list:
+                if lo["team1"] == t1 and lo["team2"] == t2 and lo["best_odds_t1"] > 0:
+                    odds_t1 = lo["best_odds_t1"]
+                    odds_t2 = lo["best_odds_t2"]
+                    break
+        except Exception:
+            pass  # keep model-generated odds
 
         # Determine value bet: AI probability > implied odds probability by 3%+
         implied_t1 = 1.0 / odds_t1 if odds_t1 > 0 else 0.5
@@ -312,10 +373,38 @@ async def matches_upcoming_with_predictions() -> dict[str, Any]:
             "is_value_bet": is_value_bet,
             "form_t1": form_t1,
             "form_t2": form_t2,
+            "score_range_t1": score_range_t1,
+            "score_range_t2": score_range_t2,
             "reasoning": reasoning,
         })
 
     return {"matches": results}
+
+
+@app.post("/predictions/save")
+async def save_prediction(req: dict, authorization: str = Header(default="")) -> dict:
+    """Save a prediction the user has viewed."""
+    user = _get_current_user(authorization)
+    if not user:
+        raise HTTPException(401, "Login required to save predictions")
+    uid = user["id"]
+    preds = _saved_predictions.setdefault(uid, [])
+    # Avoid duplicates by match_id
+    mid = req.get("match_id", "")
+    if not any(p.get("match_id") == mid for p in preds):
+        preds.insert(0, {**req, "saved_at": datetime.now(timezone.utc).isoformat()})
+        if len(preds) > 50:
+            preds.pop()
+    return {"saved": True}
+
+
+@app.get("/predictions/mine")
+async def my_predictions(authorization: str = Header(default="")) -> dict:
+    """Get this user's saved predictions."""
+    user = _get_current_user(authorization)
+    if not user:
+        raise HTTPException(401, "Login required")
+    return {"predictions": _saved_predictions.get(user["id"], [])}
 
 
 @app.get("/teams/{team_name}/lineup")

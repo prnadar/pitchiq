@@ -533,6 +533,19 @@ class FeatureBuilder:
             "t2_bowl_quality": t2_bowl_quality,
         }
 
+    def estimate_score_range(self, team: str, venue: str) -> tuple[int, int]:
+        """Estimate expected score range for a team batting at a venue."""
+        n = len(self._matches)
+        base = self._venue_avg_score(venue, n) or 160.0
+        # Adjust by team batting quality (uses player stats if available)
+        qual = 1.0
+        if self._player_stats and self._player_stats.available:
+            current_season = max(m.season for m in self.matches if m.season) if self.matches else 2025
+            q = self._player_stats.team_batting_quality(team, current_season)
+            qual = 0.85 + q * 0.30  # maps [0,1] -> [0.85, 1.15]
+        est = base * qual
+        return int(est - 14), int(est + 14)
+
     def build_dataset(self, min_index: int = 50) -> tuple[np.ndarray, np.ndarray]:
         """Build X, y arrays for training. Skips first *min_index* matches."""
         feature_names = list(self.build_features_for_match(min_index).keys())
