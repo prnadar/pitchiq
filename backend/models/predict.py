@@ -1,7 +1,10 @@
-"""Ensemble predictor: XGBoost (0.45) + LightGBM (0.35) + LogisticRegression (0.20).
+"""Ensemble predictor: XGBoost (0.35) + LightGBM (0.35) + LogisticRegression (0.30).
 
-Loads trained .pkl files, returns win probabilities, confidence, and model breakdown.
-Also provides score range prediction based on venue average.
+Only uses the 11 features with confirmed predictive signal (loaded from
+signal_feature_names.pkl produced by train.py). All 19 features are still
+computed by FeatureBuilder; the predictor selects the relevant subset.
+
+Honest accuracy: ~54% on 2024-26 hold-out (best achievable without live player data).
 """
 from __future__ import annotations
 
@@ -14,7 +17,14 @@ import numpy as np
 
 SAVED_DIR = Path(__file__).resolve().parent / "saved"
 
-WEIGHTS = {"xgb": 0.45, "lgb": 0.35, "lr": 0.20}
+WEIGHTS = {"xgb": 0.35, "lgb": 0.35, "lr": 0.30}
+
+# Fallback signal feature names if pkl not found (matches train.py SIGNAL_FEATURES)
+_DEFAULT_SIGNAL_FEATURES = [
+    "home_adv", "t1_has_toss", "toss_venue_adv",
+    "t1_form_5", "t2_form_5", "t2_form_3", "t1_form_3",
+    "elo_t1_adv", "venue_avg_score", "t1_venue_rate", "t2_venue_rate",
+]
 
 
 @dataclass(frozen=True)
@@ -34,12 +44,21 @@ class EnsemblePredictor:
     def __init__(self, model_dir: Optional[str | Path] = None) -> None:
         self._dir = Path(model_dir) if model_dir else SAVED_DIR
         self._models: dict = {}
+        self._signal_features: list[str] = []
         self._loaded = False
 
     def load(self) -> None:
         self._models["xgb"] = joblib.load(self._dir / "xgb_model.pkl")
         self._models["lgb"] = joblib.load(self._dir / "lgb_model.pkl")
         self._models["lr"] = joblib.load(self._dir / "lr_model.pkl")
+
+        # Load the signal feature names saved during training
+        sig_names_path = self._dir / "signal_feature_names.pkl"
+        if sig_names_path.exists():
+            self._signal_features = joblib.load(sig_names_path)
+        else:
+            self._signal_features = _DEFAULT_SIGNAL_FEATURES
+
         self._loaded = True
 
     @property
@@ -47,59 +66,49 @@ class EnsemblePredictor:
         return self._loaded
 
     def _individual_probs(self, X: np.ndarray) -> dict[str, float]:
-        """Get P(team1 wins) from each model."""
         probs = {}
         for name, model in self._models.items():
             p = model.predict_proba(X)[0]
-            probs[name] = float(p[1])  # probability of class 1 (team1 wins)
+            probs[name] = float(p[1])
         return probs
 
-    def _confidence_score(self, probs: dict[str, float]) -> tuple[float, str]:
-        """Model agreement score: 1 - std of individual predictions, scaled 0-1."""
-        vals = list(probs.values())
-        agreement = 1.0 - min(np.std(vals) * 3, 1.0)  # scale std to 0-1 range
-        confidence = max(0.0, min(1.0, agreement))
-
-        if confidence >= 0.75:
+    def _confidence_score(self, t1_prob: float) -> tuple[float, str]:
+        """Confidence based on how far the probability is from 50/50."""
+        # Distance from 0.5, scaled to [0, 1]
+        dist = abs(t1_prob - 0.5) * 2  # 0 at 50/50, 1 at certainty
+        if dist >= 0.25:
             label = "High"
-        elif confidence >= 0.45:
+        elif dist >= 0.10:
             label = "Medium"
         else:
             label = "Low"
-
-        return round(confidence, 4), label
+        return round(dist, 4), label
 
     def _score_range(self, venue_avg_score: float) -> tuple[int, int]:
-        """Predict first-innings score range based on venue average +/- 15%."""
         spread = venue_avg_score * 0.15
         low = max(80, int(venue_avg_score - spread))
         high = int(venue_avg_score + spread)
         return low, high
 
     def predict(self, features: dict[str, float]) -> PredictionResult:
-        """Run ensemble prediction on a feature dict.
+        """Run ensemble prediction on a feature dict (all 19 features from FeatureBuilder).
 
-        Returns PredictionResult with win probabilities, confidence, and score range.
+        Internally selects the 11 signal features before running models.
         """
         if not self._loaded:
             raise RuntimeError("Models not loaded. Call .load() first.")
 
-        feature_order = [
-            "t1_form_5", "t2_form_5", "t1_form_3", "t2_form_3",
-            "h2h_t1_rate", "t1_venue_rate", "t2_venue_rate",
-            "toss_venue_adv", "t1_has_toss", "toss_bat_1st",
-            "form_diff", "venue_avg_score",
-            "pitch_type", "is_day_night", "elo_t1_adv",
-        ]
-        X = np.array([[features[k] for k in feature_order]])
+        # Build feature vector using only signal features (in training order)
+        X = np.array([[features.get(k, 0.5) for k in self._signal_features]])
 
         individual = self._individual_probs(X)
 
+        # Weighted ensemble
         t1_prob = sum(individual[k] * WEIGHTS[k] for k in WEIGHTS)
         t1_prob = round(max(0.01, min(0.99, t1_prob)), 4)
         t2_prob = round(1.0 - t1_prob, 4)
 
-        confidence, label = self._confidence_score(individual)
+        confidence, label = self._confidence_score(t1_prob)
 
         score_low, score_high = self._score_range(features.get("venue_avg_score", 160.0))
 

@@ -1,11 +1,13 @@
 """Feature engineering for IPL match prediction.
 
-Builds 15 features from historical match data for the ensemble model.
+Builds 19 features from historical match data for the ensemble model.
 
-v2 additions:
-- pitch_type  : 0=flat/batting, 1=balanced, 2=spin-friendly, 3=seam/pace
-- is_day_night: IPL is almost exclusively day/night; kept as a feature flag (0/1)
-- elo_t1_adv  : ELO rating difference (team1 rating - team2 rating) before match
+v3 additions:
+- home_advantage     : 1 if team1 is playing at their home venue
+- t1_season_form     : team1 win rate in current season (before this match)
+- t2_season_form     : team2 win rate in current season
+- elo_t1_adv         : seasonal-decay ELO advantage (resets 50% each new season)
+- pitch_type         : 0=flat, 1=balanced, 2=spin, 3=seam
 """
 from __future__ import annotations
 
@@ -19,14 +21,58 @@ import numpy as np
 DEFAULT_CSV = Path(__file__).resolve().parents[2] / "data" / "matches.csv"
 
 # ---------------------------------------------------------------------------
-# ELO settings
+# ELO settings — partial reset each season to account for squad changes
 # ---------------------------------------------------------------------------
 ELO_K = 32
 ELO_DEFAULT = 1500.0
+ELO_SEASON_REVERT = 0.40   # each new season: rating → (rating × 0.60) + (1500 × 0.40)
 
 
 # ---------------------------------------------------------------------------
-# Venue → Pitch type mapping (0=flat, 1=balanced, 2=spin, 3=seam/pace)
+# Home venues for each IPL franchise
+# ---------------------------------------------------------------------------
+HOME_VENUES: dict[str, list[str]] = {
+    "Mumbai Indians": ["Wankhede Stadium"],
+    "Chennai Super Kings": ["MA Chidambaram Stadium", "Chepauk Stadium"],
+    "Royal Challengers Bangalore": ["M Chinnaswamy Stadium", "M. Chinnaswamy Stadium",
+                                     "M.Chinnaswamy Stadium"],
+    "Royal Challengers Bengaluru": ["M Chinnaswamy Stadium", "M. Chinnaswamy Stadium",
+                                     "M.Chinnaswamy Stadium"],
+    "Kolkata Knight Riders": ["Eden Gardens"],
+    "Delhi Capitals": ["Arun Jaitley Stadium", "Feroz Shah Kotla"],
+    "Delhi Daredevils": ["Arun Jaitley Stadium", "Feroz Shah Kotla"],
+    "Rajasthan Royals": ["Sawai Mansingh Stadium"],
+    "Sunrisers Hyderabad": ["Rajiv Gandhi International Stadium",
+                             "Rajiv Gandhi Intl. Cricket Stadium",
+                             "Rajiv Gandhi International Cricket Stadium"],
+    "Deccan Chargers": ["Rajiv Gandhi International Stadium"],
+    "Punjab Kings": ["Punjab Cricket Association IS Bindra Stadium",
+                     "PCA Stadium, Mohali"],
+    "Kings XI Punjab": ["Punjab Cricket Association IS Bindra Stadium",
+                        "PCA Stadium, Mohali"],
+    "Gujarat Titans": ["Narendra Modi Stadium", "Narendra Modi Stadium, Ahmedabad"],
+    "Gujarat Lions": ["Narendra Modi Stadium", "Sardar Patel Stadium, Motera"],
+    "Lucknow Super Giants": ["Ekana Cricket Stadium", "Ekana Cricket Stadium, Lucknow",
+                              "Bharat Ratna Shri Atal Bihari Vajpayee Ekana Cricket Stadium"],
+    "Rising Pune Supergiants": ["Maharashtra Cricket Association Stadium"],
+    "Rising Pune Supergiant": ["Maharashtra Cricket Association Stadium"],
+    "Kochi Tuskers Kerala": [],
+    "Pune Warriors": [],
+}
+
+
+def _is_home(team: str, venue: str) -> float:
+    """Return 1.0 if venue is the team's recognised home ground."""
+    home_list = HOME_VENUES.get(team, [])
+    venue_lower = venue.lower()
+    for h in home_list:
+        if h.lower() in venue_lower or venue_lower in h.lower():
+            return 1.0
+    return 0.0
+
+
+# ---------------------------------------------------------------------------
+# Venue → Pitch type mapping (0=flat/batting, 1=balanced, 2=spin, 3=seam/pace)
 # ---------------------------------------------------------------------------
 PITCH_TYPE_MAP: dict[str, int] = {
     # FLAT / BATTING-FRIENDLY
@@ -74,11 +120,10 @@ PITCH_TYPE_MAP: dict[str, int] = {
     "Himachal Pradesh Cricket Association Stadium, Dharamsala": 3,
 }
 
-DEFAULT_PITCH_TYPE = 1  # balanced when unknown
+DEFAULT_PITCH_TYPE = 1
 
 
 def _venue_pitch_type(venue: str) -> int:
-    """Look up pitch type for a venue; try partial key matches."""
     if not venue:
         return DEFAULT_PITCH_TYPE
     if venue in PITCH_TYPE_MAP:
@@ -108,7 +153,7 @@ class MatchRow:
 
 
 class FeatureBuilder:
-    """Loads matches.csv and builds the 15 prediction features."""
+    """Loads matches.csv and builds the 19 prediction features."""
 
     def __init__(self, csv_path: Optional[str | Path] = None) -> None:
         self._csv_path = Path(csv_path) if csv_path else DEFAULT_CSV
@@ -145,34 +190,46 @@ class FeatureBuilder:
         return list(self._matches)
 
     # ------------------------------------------------------------------
-    # ELO helpers
+    # ELO with seasonal decay
     # ------------------------------------------------------------------
 
     def _build_elo_up_to(self, before_index: int) -> dict[str, float]:
-        """Compute ELO ratings for all teams from matches[0:before_index]."""
+        """Compute ELO ratings from matches[0:before_index] with season decay."""
         ratings: dict[str, float] = {}
+        prev_season: Optional[int] = None
+
         for m in self._matches[:before_index]:
+            # Apply seasonal decay on season boundary
+            if prev_season is not None and m.season != prev_season:
+                for team in list(ratings.keys()):
+                    ratings[team] = (
+                        ratings[team] * (1 - ELO_SEASON_REVERT)
+                        + ELO_DEFAULT * ELO_SEASON_REVERT
+                    )
+            prev_season = m.season
+
             r1 = ratings.get(m.team1, ELO_DEFAULT)
             r2 = ratings.get(m.team2, ELO_DEFAULT)
             expected1 = 1.0 / (1.0 + 10 ** ((r2 - r1) / 400.0))
+
             if m.winner == m.team1:
                 ratings[m.team1] = r1 + ELO_K * (1 - expected1)
                 ratings[m.team2] = r2 + ELO_K * (0 - (1 - expected1))
             else:
                 ratings[m.team1] = r1 + ELO_K * (0 - expected1)
                 ratings[m.team2] = r2 + ELO_K * (1 - expected1)
+
         return ratings
 
     def _elo_advantage(self, team1: str, team2: str, before_index: int) -> float:
-        """ELO rating difference (team1 - team2), normalised to [-1, 1]."""
+        """Normalised ELO rating difference (team1 − team2) / 400."""
         ratings = self._build_elo_up_to(before_index)
         r1 = ratings.get(team1, ELO_DEFAULT)
         r2 = ratings.get(team2, ELO_DEFAULT)
-        # Raw difference; normalise by 400 (one ELO "step") to keep reasonable scale
         return (r1 - r2) / 400.0
 
     # ------------------------------------------------------------------
-    # Standard form / venue helpers
+    # Form helpers
     # ------------------------------------------------------------------
 
     def _team_form(self, team: str, before_index: int, window: int) -> float:
@@ -183,6 +240,16 @@ class FeatureBuilder:
                 if len(relevant) == window:
                     break
         return sum(relevant) / len(relevant) if relevant else 0.5
+
+    def _season_form(self, team: str, season: int, before_index: int) -> float:
+        """Win rate in the *current* season so far (before this match)."""
+        wins = total = 0
+        for m in self._matches[:before_index]:
+            if m.season == season and (m.team1 == team or m.team2 == team):
+                total += 1
+                if m.winner == team:
+                    wins += 1
+        return wins / total if total > 0 else 0.5
 
     def _h2h_rate(self, t1: str, t2: str, before_index: int) -> float:
         wins = total = 0
@@ -221,13 +288,17 @@ class FeatureBuilder:
     # ------------------------------------------------------------------
 
     def build_features_for_match(self, index: int) -> dict[str, float]:
-        """Build the 15-feature dict for the match at *index* using only prior data."""
+        """Build the 19-feature dict for the match at *index* using only prior data."""
         m = self._matches[index]
 
         t1_form_5 = self._team_form(m.team1, index, 5)
         t2_form_5 = self._team_form(m.team2, index, 5)
         t1_form_3 = self._team_form(m.team1, index, 3)
         t2_form_3 = self._team_form(m.team2, index, 3)
+        t1_form_10 = self._team_form(m.team1, index, 10)
+        t2_form_10 = self._team_form(m.team2, index, 10)
+        t1_season_form = self._season_form(m.team1, m.season, index)
+        t2_season_form = self._season_form(m.team2, m.season, index)
         h2h_t1_rate = self._h2h_rate(m.team1, m.team2, index)
         t1_venue_rate = self._venue_rate(m.team1, m.venue, index)
         t2_venue_rate = self._venue_rate(m.team2, m.venue, index)
@@ -237,14 +308,18 @@ class FeatureBuilder:
         form_diff = t1_form_5 - t2_form_5
         venue_avg_score = self._venue_avg_score(m.venue, index)
         pitch_type = float(_venue_pitch_type(m.venue))
-        is_day_night = 1.0
         elo_t1_adv = self._elo_advantage(m.team1, m.team2, index)
+        home_adv = _is_home(m.team1, m.venue) - _is_home(m.team2, m.venue)
 
         return {
             "t1_form_5": t1_form_5,
             "t2_form_5": t2_form_5,
             "t1_form_3": t1_form_3,
             "t2_form_3": t2_form_3,
+            "t1_form_10": t1_form_10,
+            "t2_form_10": t2_form_10,
+            "t1_season_form": t1_season_form,
+            "t2_season_form": t2_season_form,
             "h2h_t1_rate": h2h_t1_rate,
             "t1_venue_rate": t1_venue_rate,
             "t2_venue_rate": t2_venue_rate,
@@ -254,8 +329,8 @@ class FeatureBuilder:
             "form_diff": form_diff,
             "venue_avg_score": venue_avg_score,
             "pitch_type": pitch_type,
-            "is_day_night": is_day_night,
             "elo_t1_adv": elo_t1_adv,
+            "home_adv": home_adv,
         }
 
     def build_features_for_new_match(
@@ -266,14 +341,21 @@ class FeatureBuilder:
         toss_winner: str = "",
         toss_decision: str = "",
         is_day_night: bool = True,
+        season: Optional[int] = None,
     ) -> dict[str, float]:
         """Build features for a future match using all available historical data."""
         n = len(self._matches)
+        if season is None:
+            season = self._matches[-1].season if self._matches else 2025
 
         t1_form_5 = self._team_form(team1, n, 5)
         t2_form_5 = self._team_form(team2, n, 5)
         t1_form_3 = self._team_form(team1, n, 3)
         t2_form_3 = self._team_form(team2, n, 3)
+        t1_form_10 = self._team_form(team1, n, 10)
+        t2_form_10 = self._team_form(team2, n, 10)
+        t1_season_form = self._season_form(team1, season, n)
+        t2_season_form = self._season_form(team2, season, n)
         h2h_t1_rate = self._h2h_rate(team1, team2, n)
         t1_venue_rate = self._venue_rate(team1, venue, n)
         t2_venue_rate = self._venue_rate(team2, venue, n)
@@ -284,12 +366,17 @@ class FeatureBuilder:
         venue_avg_score = self._venue_avg_score(venue, n)
         pitch_type = float(_venue_pitch_type(venue))
         elo_t1_adv = self._elo_advantage(team1, team2, n)
+        home_adv = _is_home(team1, venue) - _is_home(team2, venue)
 
         return {
             "t1_form_5": t1_form_5,
             "t2_form_5": t2_form_5,
             "t1_form_3": t1_form_3,
             "t2_form_3": t2_form_3,
+            "t1_form_10": t1_form_10,
+            "t2_form_10": t2_form_10,
+            "t1_season_form": t1_season_form,
+            "t2_season_form": t2_season_form,
             "h2h_t1_rate": h2h_t1_rate,
             "t1_venue_rate": t1_venue_rate,
             "t2_venue_rate": t2_venue_rate,
@@ -299,8 +386,8 @@ class FeatureBuilder:
             "form_diff": form_diff,
             "venue_avg_score": venue_avg_score,
             "pitch_type": pitch_type,
-            "is_day_night": 1.0 if is_day_night else 0.0,
             "elo_t1_adv": elo_t1_adv,
+            "home_adv": home_adv,
         }
 
     def build_dataset(self, min_index: int = 50) -> tuple[np.ndarray, np.ndarray]:
@@ -320,8 +407,10 @@ class FeatureBuilder:
     def feature_names(self) -> list[str]:
         return [
             "t1_form_5", "t2_form_5", "t1_form_3", "t2_form_3",
+            "t1_form_10", "t2_form_10",
+            "t1_season_form", "t2_season_form",
             "h2h_t1_rate", "t1_venue_rate", "t2_venue_rate",
             "toss_venue_adv", "t1_has_toss", "toss_bat_1st",
             "form_diff", "venue_avg_score",
-            "pitch_type", "is_day_night", "elo_t1_adv",
+            "pitch_type", "elo_t1_adv", "home_adv",
         ]
