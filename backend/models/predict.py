@@ -89,6 +89,7 @@ class EnsemblePredictor:
             "h2h_t1_rate", "t1_venue_rate", "t2_venue_rate",
             "toss_venue_adv", "t1_has_toss", "toss_bat_1st",
             "form_diff", "venue_avg_score",
+            "pitch_type", "is_day_night", "elo_t1_adv",
         ]
         X = np.array([[features[k] for k in feature_order]])
 

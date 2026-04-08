@@ -135,8 +135,8 @@ tailwind.config = {
       <p class="text-on-surface-variant font-label text-base mb-7 max-w-md leading-relaxed">See what our ML model predicts vs what the bookmakers are pricing. Where they disagree — that's your edge.</p>
       <div class="flex flex-wrap gap-6 mb-7">
         <div class="flex items-center gap-3 px-4 py-3 bg-surface-container border border-outline-variant rounded-xl">
-          <span class="font-headline font-bold text-2xl text-secondary">74%</span>
-          <div><p class="text-[10px] text-on-surface-variant font-label uppercase tracking-widest">Model accuracy</p><p class="text-xs text-on-surface font-label">this season</p></div>
+          <span class="font-headline font-bold text-2xl text-secondary">57%</span>
+          <div><p class="text-[10px] text-on-surface-variant font-label uppercase tracking-widest">Model accuracy</p><p class="text-xs text-on-surface font-label">1,100+ matches</p></div>
         </div>
         <div class="flex items-center gap-3 px-4 py-3 bg-surface-container border border-outline-variant rounded-xl">
           <span class="font-headline font-bold text-2xl text-primary">23</span>
@@ -192,28 +192,29 @@ tailwind.config = {
           <div class="flex justify-between items-center">
             <span class="text-sm font-label text-on-surface-variant">XGBoost</span>
             <div class="flex items-center gap-2">
-              <div class="w-20 h-1.5 bg-surface-container-highest rounded-full overflow-hidden"><div class="h-full bg-primary rounded-full" style="width:73%"></div></div>
-              <span class="text-xs font-headline font-bold text-primary w-8">73%</span>
+              <div class="w-20 h-1.5 bg-surface-container-highest rounded-full overflow-hidden"><div class="h-full bg-primary rounded-full" style="width:52.5%"></div></div>
+              <span class="text-xs font-headline font-bold text-primary w-9">52.5%</span>
             </div>
           </div>
           <div class="flex justify-between items-center">
             <span class="text-sm font-label text-on-surface-variant">LightGBM</span>
             <div class="flex items-center gap-2">
-              <div class="w-20 h-1.5 bg-surface-container-highest rounded-full overflow-hidden"><div class="h-full bg-primary-dim rounded-full" style="width:72%"></div></div>
-              <span class="text-xs font-headline font-bold text-primary-dim w-8">72%</span>
+              <div class="w-20 h-1.5 bg-surface-container-highest rounded-full overflow-hidden"><div class="h-full bg-primary-dim rounded-full" style="width:53%"></div></div>
+              <span class="text-xs font-headline font-bold text-primary-dim w-9">53.1%</span>
             </div>
           </div>
           <div class="flex justify-between items-center">
             <span class="text-sm font-label text-on-surface-variant">Logistic</span>
             <div class="flex items-center gap-2">
-              <div class="w-20 h-1.5 bg-surface-container-highest rounded-full overflow-hidden"><div class="h-full bg-outline rounded-full" style="width:69%"></div></div>
-              <span class="text-xs font-headline font-bold text-on-surface-variant w-8">69%</span>
+              <div class="w-20 h-1.5 bg-surface-container-highest rounded-full overflow-hidden"><div class="h-full bg-outline rounded-full" style="width:50.5%"></div></div>
+              <span class="text-xs font-headline font-bold text-on-surface-variant w-9">50.5%</span>
             </div>
           </div>
           <div class="border-t border-outline-variant pt-3 flex justify-between items-center">
             <span class="text-sm font-headline font-bold text-on-surface">Ensemble</span>
-            <span class="text-sm font-headline font-bold text-secondary">74%</span>
+            <span class="text-sm font-headline font-bold text-secondary">52.3%</span>
           </div>
+          <p class="text-[9px] text-on-surface-variant font-label mt-1">Trained on 1,100+ IPL matches (2008–2025)</p>
         </div>
       </div>
 
@@ -449,6 +450,91 @@ const TEAM_COLORS = {
     'GT':'#1b4295','LSG':'#00a2e1',
 };
 
+// Static team squads (key players by role)
+// R=role: BAT, BOWL, AR (all-rounder), WK (keeper), C (captain marker)
+const TEAM_SQUADS = {
+    'MI': [
+        {n:'Rohit Sharma',r:'BAT'},
+        {n:'Ishan Kishan',r:'WK'},
+        {n:'Suryakumar Yadav',r:'BAT'},
+        {n:'Tilak Varma',r:'BAT'},
+        {n:'Hardik Pandya',r:'AR ★'},
+        {n:'Jasprit Bumrah',r:'BOWL'},
+    ],
+    'CSK': [
+        {n:'Ruturaj Gaikwad',r:'BAT ★'},
+        {n:'Devon Conway',r:'WK'},
+        {n:'Shivam Dube',r:'AR'},
+        {n:'Ravindra Jadeja',r:'AR'},
+        {n:'MS Dhoni',r:'WK'},
+        {n:'Deepak Chahar',r:'BOWL'},
+    ],
+    'RCB': [
+        {n:'Virat Kohli',r:'BAT'},
+        {n:'Faf du Plessis',r:'BAT ★'},
+        {n:'Glenn Maxwell',r:'AR'},
+        {n:'Dinesh Karthik',r:'WK'},
+        {n:'Mohammed Siraj',r:'BOWL'},
+        {n:'Josh Hazlewood',r:'BOWL'},
+    ],
+    'KKR': [
+        {n:'Shreyas Iyer',r:'BAT ★'},
+        {n:'Nitish Rana',r:'BAT'},
+        {n:'Rinku Singh',r:'BAT'},
+        {n:'Andre Russell',r:'AR'},
+        {n:'Sunil Narine',r:'AR'},
+        {n:'Varun Chakravarthy',r:'BOWL'},
+    ],
+    'DC': [
+        {n:'David Warner',r:'BAT'},
+        {n:'Prithvi Shaw',r:'BAT'},
+        {n:'Rishabh Pant',r:'WK ★'},
+        {n:'Axar Patel',r:'AR'},
+        {n:'Anrich Nortje',r:'BOWL'},
+        {n:'Kuldeep Yadav',r:'BOWL'},
+    ],
+    'RR': [
+        {n:'Jos Buttler',r:'WK'},
+        {n:'Yashasvi Jaiswal',r:'BAT'},
+        {n:'Sanju Samson',r:'WK ★'},
+        {n:'Shimron Hetmyer',r:'BAT'},
+        {n:'Ravichandran Ashwin',r:'AR'},
+        {n:'Trent Boult',r:'BOWL'},
+    ],
+    'SRH': [
+        {n:'Aiden Markram',r:'BAT ★'},
+        {n:'Harry Brook',r:'BAT'},
+        {n:'Heinrich Klaasen',r:'WK'},
+        {n:'Pat Cummins',r:'AR'},
+        {n:'Bhuvneshwar Kumar',r:'BOWL'},
+        {n:'T Natarajan',r:'BOWL'},
+    ],
+    'PBKS': [
+        {n:'Shikhar Dhawan',r:'BAT ★'},
+        {n:'Jonny Bairstow',r:'WK'},
+        {n:'Liam Livingstone',r:'AR'},
+        {n:'Sam Curran',r:'AR'},
+        {n:'Arshdeep Singh',r:'BOWL'},
+        {n:'Kagiso Rabada',r:'BOWL'},
+    ],
+    'GT': [
+        {n:'Shubman Gill',r:'BAT ★'},
+        {n:'David Miller',r:'BAT'},
+        {n:'Matthew Wade',r:'WK'},
+        {n:'Rashid Khan',r:'AR'},
+        {n:'Mohammad Shami',r:'BOWL'},
+        {n:'Alzarri Joseph',r:'BOWL'},
+    ],
+    'LSG': [
+        {n:'KL Rahul',r:'WK ★'},
+        {n:'Quinton de Kock',r:'WK'},
+        {n:'Marcus Stoinis',r:'AR'},
+        {n:'Nicholas Pooran',r:'WK'},
+        {n:'Ravi Bishnoi',r:'BOWL'},
+        {n:'Mark Wood',r:'BOWL'},
+    ],
+};
+
 // --- Init ---
 function init() {
     if (currentUser && authToken) setLoggedInUI();
@@ -548,6 +634,22 @@ document.querySelectorAll('.modal-backdrop').forEach(el => {
 function openMobileSidebar() { document.getElementById('mobile-sidebar').classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
 function closeMobileSidebar() { document.getElementById('mobile-sidebar').classList.add('hidden'); document.body.style.overflow = ''; }
 
+// --- Player XI toggle ---
+function togglePlayers(btn) {
+    const panel = btn.closest('.player-toggle-root').querySelector('.players-panel');
+    const icon = btn.querySelector('.toggle-icon');
+    const label = btn.querySelector('.toggle-label');
+    if (panel.classList.contains('hidden')) {
+        panel.classList.remove('hidden');
+        icon.textContent = 'expand_less';
+        label.textContent = 'Hide XI';
+    } else {
+        panel.classList.add('hidden');
+        icon.textContent = 'expand_more';
+        label.textContent = 'Show Team XIs';
+    }
+}
+
 // --- Signup ---
 async function handleSignup(e) {
     e.preventDefault();
@@ -599,6 +701,32 @@ async function handleLogin(e) {
     } finally {
         btn.disabled = false; btn.textContent = 'Log In';
     }
+}
+
+// --- Player XI HTML builder ---
+function buildSquadHtml(abbr, color) {
+    const squad = TEAM_SQUADS[abbr];
+    if (!squad) {
+        return `<div class="text-[10px] text-on-surface-variant font-label">Squad data loading...</div>`;
+    }
+    const rows = squad.map(p => {
+        const isCaptain = p.r.includes('★');
+        const role = p.r.replace(' ★','');
+        const roleBg = role === 'BOWL' ? 'bg-error/10 text-error' :
+                       role === 'AR'   ? 'bg-secondary/10 text-secondary' :
+                       role === 'WK'   ? 'bg-primary/10 text-primary' :
+                                         'bg-surface-container-highest text-on-surface-variant';
+        return `
+            <div class="flex items-center justify-between gap-1">
+                <span class="text-[10px] font-label text-on-surface truncate">${p.n}${isCaptain ? ' <span class="text-secondary">C</span>' : ''}</span>
+                <span class="text-[8px] px-1.5 py-0.5 rounded font-label font-bold ${roleBg} shrink-0">${role}</span>
+            </div>`;
+    }).join('');
+    return `
+        <div>
+            <p class="text-[9px] font-label font-bold uppercase tracking-widest mb-2" style="color:${color}">${abbr} XI</p>
+            <div class="space-y-1">${rows}</div>
+        </div>`;
 }
 
 // --- Render match cards (AI Prediction vs Bookmaker Price) ---
@@ -753,6 +881,18 @@ function renderPredictions(predictions) {
 
             <!-- Alignment signal -->
             ${alignHtml}
+
+            <!-- Player XI expandable -->
+            <div class="player-toggle-root mt-3 border-t border-outline-variant pt-3">
+                <button onclick="togglePlayers(this)" class="flex items-center gap-1.5 text-xs text-on-surface-variant hover:text-on-surface transition-colors">
+                    <span class="material-symbols-outlined toggle-icon" style="font-size:15px">expand_more</span>
+                    <span class="toggle-label font-label">Show Team XIs</span>
+                </button>
+                <div class="players-panel hidden mt-3 grid grid-cols-2 gap-3">
+                    ${buildSquadHtml(t1, t1Color)}
+                    ${buildSquadHtml(t2, t2Color)}
+                </div>
+            </div>
 
             <!-- Actions -->
             <div class="flex gap-2 mt-4">

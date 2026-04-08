@@ -153,6 +153,137 @@ async def matches_upcoming() -> dict[str, Any]:
         return {"matches": [], "source": "unavailable", "message": "Set CRICKET_API_KEY env var"}
 
 
+@app.get("/matches/{match_id}/players")
+async def match_players(match_id: str) -> dict[str, Any]:
+    """Return key players for both teams in a given match.
+
+    Uses cricapi.com if CRICKET_API_KEY is set, otherwise returns curated
+    static squad data for the 10 current IPL franchises.
+    """
+    # Static fallback squads (2024-25 season)
+    STATIC_SQUADS: dict[str, list[dict[str, str]]] = {
+        "Mumbai Indians": [
+            {"name": "Rohit Sharma", "role": "BAT"},
+            {"name": "Ishan Kishan", "role": "WK"},
+            {"name": "Suryakumar Yadav", "role": "BAT"},
+            {"name": "Tilak Varma", "role": "BAT"},
+            {"name": "Hardik Pandya", "role": "AR", "captain": "1"},
+            {"name": "Jasprit Bumrah", "role": "BOWL"},
+        ],
+        "Chennai Super Kings": [
+            {"name": "Ruturaj Gaikwad", "role": "BAT", "captain": "1"},
+            {"name": "Devon Conway", "role": "WK"},
+            {"name": "Shivam Dube", "role": "AR"},
+            {"name": "Ravindra Jadeja", "role": "AR"},
+            {"name": "MS Dhoni", "role": "WK"},
+            {"name": "Deepak Chahar", "role": "BOWL"},
+        ],
+        "Royal Challengers Bangalore": [
+            {"name": "Virat Kohli", "role": "BAT"},
+            {"name": "Faf du Plessis", "role": "BAT", "captain": "1"},
+            {"name": "Glenn Maxwell", "role": "AR"},
+            {"name": "Dinesh Karthik", "role": "WK"},
+            {"name": "Mohammed Siraj", "role": "BOWL"},
+            {"name": "Josh Hazlewood", "role": "BOWL"},
+        ],
+        "Kolkata Knight Riders": [
+            {"name": "Shreyas Iyer", "role": "BAT", "captain": "1"},
+            {"name": "Nitish Rana", "role": "BAT"},
+            {"name": "Rinku Singh", "role": "BAT"},
+            {"name": "Andre Russell", "role": "AR"},
+            {"name": "Sunil Narine", "role": "AR"},
+            {"name": "Varun Chakravarthy", "role": "BOWL"},
+        ],
+        "Delhi Capitals": [
+            {"name": "David Warner", "role": "BAT"},
+            {"name": "Prithvi Shaw", "role": "BAT"},
+            {"name": "Rishabh Pant", "role": "WK", "captain": "1"},
+            {"name": "Axar Patel", "role": "AR"},
+            {"name": "Anrich Nortje", "role": "BOWL"},
+            {"name": "Kuldeep Yadav", "role": "BOWL"},
+        ],
+        "Rajasthan Royals": [
+            {"name": "Jos Buttler", "role": "WK"},
+            {"name": "Yashasvi Jaiswal", "role": "BAT"},
+            {"name": "Sanju Samson", "role": "WK", "captain": "1"},
+            {"name": "Shimron Hetmyer", "role": "BAT"},
+            {"name": "Ravichandran Ashwin", "role": "AR"},
+            {"name": "Trent Boult", "role": "BOWL"},
+        ],
+        "Sunrisers Hyderabad": [
+            {"name": "Aiden Markram", "role": "BAT", "captain": "1"},
+            {"name": "Harry Brook", "role": "BAT"},
+            {"name": "Heinrich Klaasen", "role": "WK"},
+            {"name": "Pat Cummins", "role": "AR"},
+            {"name": "Bhuvneshwar Kumar", "role": "BOWL"},
+            {"name": "T Natarajan", "role": "BOWL"},
+        ],
+        "Punjab Kings": [
+            {"name": "Shikhar Dhawan", "role": "BAT", "captain": "1"},
+            {"name": "Jonny Bairstow", "role": "WK"},
+            {"name": "Liam Livingstone", "role": "AR"},
+            {"name": "Sam Curran", "role": "AR"},
+            {"name": "Arshdeep Singh", "role": "BOWL"},
+            {"name": "Kagiso Rabada", "role": "BOWL"},
+        ],
+        "Gujarat Titans": [
+            {"name": "Shubman Gill", "role": "BAT", "captain": "1"},
+            {"name": "David Miller", "role": "BAT"},
+            {"name": "Matthew Wade", "role": "WK"},
+            {"name": "Rashid Khan", "role": "AR"},
+            {"name": "Mohammad Shami", "role": "BOWL"},
+            {"name": "Alzarri Joseph", "role": "BOWL"},
+        ],
+        "Lucknow Super Giants": [
+            {"name": "KL Rahul", "role": "WK", "captain": "1"},
+            {"name": "Quinton de Kock", "role": "WK"},
+            {"name": "Marcus Stoinis", "role": "AR"},
+            {"name": "Nicholas Pooran", "role": "WK"},
+            {"name": "Ravi Bishnoi", "role": "BOWL"},
+            {"name": "Mark Wood", "role": "BOWL"},
+        ],
+    }
+
+    # Try live API first
+    api_key = os.environ.get("CRICKET_API_KEY", "")
+    if api_key:
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.get(
+                    "https://api.cricapi.com/v1/match_squad",
+                    params={"apikey": api_key, "id": match_id},
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if data.get("status") == "success" and data.get("data"):
+                        return {"match_id": match_id, "source": "live", "data": data["data"]}
+        except Exception as e:
+            logger.warning("Failed to fetch live squad: %s", e)
+
+    # Fallback: return static squad data for both teams (look up by match ID in feature builder)
+    if feature_builder:
+        # Try to find the match in our historical data
+        for m in feature_builder.matches:
+            if str(m.id) == match_id:
+                t1_squad = STATIC_SQUADS.get(m.team1, [])
+                t2_squad = STATIC_SQUADS.get(m.team2, [])
+                return {
+                    "match_id": match_id,
+                    "source": "static",
+                    "team1": {"name": m.team1, "players": t1_squad},
+                    "team2": {"name": m.team2, "players": t2_squad},
+                }
+
+    # Generic fallback
+    return {
+        "match_id": match_id,
+        "source": "static",
+        "team1": {"name": "Team 1", "players": []},
+        "team2": {"name": "Team 2", "players": []},
+    }
+
+
 @app.get("/odds/live")
 async def odds_live(authorization: str = Header(default="")) -> dict[str, Any]:
     """Fetch live bookmaker odds. Requires Pro/Expert plan."""
