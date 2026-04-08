@@ -19,6 +19,7 @@ from pydantic import BaseModel, EmailStr
 from backend.auth.auth import create_jwt, decode_jwt, hash_password, verify_password
 from backend.models.features import FeatureBuilder
 from backend.models.predict import EnsemblePredictor
+from backend.models.reasoning import ReasoningEngine
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("pitchiq")
@@ -40,6 +41,7 @@ app.add_middleware(
 # --- Global state ---
 feature_builder: Optional[FeatureBuilder] = None
 predictor: Optional[EnsemblePredictor] = None
+reasoning_engine: ReasoningEngine = ReasoningEngine()
 
 
 @app.on_event("startup")
@@ -67,6 +69,8 @@ class PredictRequest(BaseModel):
     venue: str
     toss_winner: str = ""
     toss_decision: str = ""
+    odds_t1: float = 0.0
+    odds_t2: float = 0.0
 
 
 class SignupRequest(BaseModel):
@@ -116,6 +120,17 @@ async def predict(req: PredictRequest) -> dict[str, Any]:
     )
     result = predictor.predict(features)
 
+    reasoning = reasoning_engine.generate(
+        team1=req.team1,
+        team2=req.team2,
+        venue=req.venue,
+        features=features,
+        result=result,
+        fb=feature_builder,
+        odds_t1=req.odds_t1,
+        odds_t2=req.odds_t2,
+    )
+
     return {
         "team1": req.team1,
         "team2": req.team2,
@@ -127,6 +142,7 @@ async def predict(req: PredictRequest) -> dict[str, Any]:
         "model_breakdown": result.model_breakdown,
         "score_range_low": result.score_range_low,
         "score_range_high": result.score_range_high,
+        "reasoning": reasoning,
     }
 
 
@@ -151,6 +167,227 @@ async def matches_upcoming() -> dict[str, Any]:
         return {"matches": matches, "source": "live"}
     except RuntimeError:
         return {"matches": [], "source": "unavailable", "message": "Set CRICKET_API_KEY env var"}
+
+
+@app.get("/matches/upcoming/with-predictions")
+async def matches_upcoming_with_predictions() -> dict[str, Any]:
+    """Returns upcoming IPL matches with pre-computed predictions and reasoning.
+
+    Uses sample fixture data when no live cricket API key is configured.
+    Odds are generated from model probabilities with a ~5% bookmaker margin.
+    """
+    SAMPLE_FIXTURES = [
+        {
+            "match_id": "sample-001",
+            "team1": "Mumbai Indians",
+            "team2": "Chennai Super Kings",
+            "venue": "Wankhede Stadium",
+            "match_time": "19:30",
+        },
+        {
+            "match_id": "sample-002",
+            "team1": "Royal Challengers Bangalore",
+            "team2": "Kolkata Knight Riders",
+            "venue": "M Chinnaswamy Stadium",
+            "match_time": "15:30",
+        },
+        {
+            "match_id": "sample-003",
+            "team1": "Rajasthan Royals",
+            "team2": "Sunrisers Hyderabad",
+            "venue": "Sawai Mansingh Stadium",
+            "match_time": "19:30",
+        },
+        {
+            "match_id": "sample-004",
+            "team1": "Delhi Capitals",
+            "team2": "Punjab Kings",
+            "venue": "Arun Jaitley Stadium",
+            "match_time": "19:30",
+        },
+        {
+            "match_id": "sample-005",
+            "team1": "Gujarat Titans",
+            "team2": "Lucknow Super Giants",
+            "venue": "Narendra Modi Stadium",
+            "match_time": "19:30",
+        },
+    ]
+
+    results = []
+
+    for fixture in SAMPLE_FIXTURES:
+        t1 = fixture["team1"]
+        t2 = fixture["team2"]
+        venue = fixture["venue"]
+
+        # Build features and predict (requires models to be loaded)
+        if feature_builder and predictor and predictor.is_loaded:
+            features = feature_builder.build_features_for_new_match(
+                team1=t1,
+                team2=t2,
+                venue=venue,
+            )
+            result = predictor.predict(features)
+            t1_prob = result.t1_win_prob
+            t2_prob = result.t2_win_prob
+            confidence = result.confidence
+            confidence_label = result.confidence_label
+        else:
+            # Fallback when models are not loaded
+            t1_prob = 0.5
+            t2_prob = 0.5
+            confidence = 0.0
+            confidence_label = "Low"
+            features = {
+                "t1_form_5": 0.5, "t2_form_5": 0.5,
+                "t1_form_3": 0.5, "t2_form_3": 0.5,
+                "t1_form_10": 0.5, "t2_form_10": 0.5,
+                "t1_season_form": 0.5, "t2_season_form": 0.5,
+                "h2h_t1_rate": 0.5,
+                "t1_venue_rate": 0.5, "t2_venue_rate": 0.5,
+                "toss_venue_adv": 0.5,
+                "t1_has_toss": 0.0, "toss_bat_1st": 0.0,
+                "form_diff": 0.0, "venue_avg_score": 160.0,
+                "pitch_type": 1.0, "elo_t1_adv": 0.0, "home_adv": 0.0,
+            }
+
+            class _FakeResult:
+                t1_win_prob = t1_prob
+                t2_win_prob = t2_prob
+                confidence = confidence
+                confidence_label = confidence_label
+
+            result = _FakeResult()
+
+        # Generate odds with ~5% bookmaker margin (overround)
+        MARGIN = 1.05
+        odds_t1 = round(MARGIN / t1_prob, 2) if t1_prob > 0 else 2.0
+        odds_t2 = round(MARGIN / t2_prob, 2) if t2_prob > 0 else 2.0
+
+        # Determine value bet: AI probability > implied odds probability by 3%+
+        implied_t1 = 1.0 / odds_t1 if odds_t1 > 0 else 0.5
+        is_value_bet = (t1_prob - implied_t1) > 0.03
+
+        # Extract last 5 form results for each team
+        form_t1: list[int] = []
+        form_t2: list[int] = []
+        if feature_builder:
+            for m in reversed(feature_builder.matches):
+                if len(form_t1) < 5 and (m.team1 == t1 or m.team2 == t1):
+                    form_t1.append(1 if m.winner == t1 else 0)
+                if len(form_t2) < 5 and (m.team1 == t2 or m.team2 == t2):
+                    form_t2.append(1 if m.winner == t2 else 0)
+                if len(form_t1) >= 5 and len(form_t2) >= 5:
+                    break
+        form_t1 = list(reversed(form_t1))
+        form_t2 = list(reversed(form_t2))
+
+        # Generate reasoning
+        reasoning = reasoning_engine.generate(
+            team1=t1,
+            team2=t2,
+            venue=venue,
+            features=features,
+            result=result,
+            fb=feature_builder,
+            odds_t1=odds_t1,
+            odds_t2=odds_t2,
+        )
+
+        results.append({
+            "match_id": fixture["match_id"],
+            "team1": t1,
+            "team2": t2,
+            "venue": venue,
+            "match_time": fixture["match_time"],
+            "status": "upcoming",
+            "t1_win_prob": t1_prob,
+            "t2_win_prob": t2_prob,
+            "confidence": confidence,
+            "confidence_label": confidence_label,
+            "odds_t1": odds_t1,
+            "odds_t2": odds_t2,
+            "odds_book": "Sample",
+            "is_value_bet": is_value_bet,
+            "form_t1": form_t1,
+            "form_t2": form_t2,
+            "reasoning": reasoning,
+        })
+
+    return {"matches": results}
+
+
+@app.get("/teams/{team_name}/lineup")
+async def team_lineup(team_name: str, season: int = 2025) -> dict[str, Any]:
+    """Return the top players for a team in a given season from player_season_stats.csv.
+
+    Returns up to 11 players sorted by total contribution (runs + wickets proxy).
+    Each player includes batting and bowling stats.
+    """
+    if not feature_builder or not feature_builder._player_stats.available:
+        return {"team": team_name, "season": season, "players": [], "source": "unavailable"}
+
+    ps = feature_builder._player_stats
+    # Try requested season, fall back 1-2 seasons
+    rows: list[dict] = []
+    for offset in (0, 1, 2):
+        rows = ps._get_team_rows(team_name, season - offset)
+        if rows:
+            actual_season = season - offset
+            break
+
+    if not rows:
+        return {"team": team_name, "season": season, "players": [], "source": "no_data"}
+
+    def _score(r: dict) -> float:
+        """Composite score: batting runs + wickets*15 (rough all-round value)."""
+        runs = float(r.get("bat_runs") or 0)
+        wkts = float(r.get("bowl_wickets") or 0)
+        return runs + wkts * 15
+
+    # Sort by composite score, take top 11
+    players = sorted(rows, key=_score, reverse=True)[:11]
+
+    def _role(r: dict) -> str:
+        bat_runs = float(r.get("bat_runs") or 0)
+        bowl_wkts = float(r.get("bowl_wickets") or 0)
+        bat_balls = float(r.get("bat_balls") or 0)
+        bowl_balls = float(r.get("bowl_balls") or 0)
+        if bat_balls > 0 and bowl_balls > 0 and bat_runs > 100 and bowl_wkts > 5:
+            return "AR"
+        if bat_balls > 0 and bat_runs > 50:
+            return "BAT"
+        if bowl_balls > 0 and bowl_wkts > 0:
+            return "BOWL"
+        return "BAT"
+
+    out = []
+    for r in players:
+        bat_sr = float(r.get("bat_sr") or 0)
+        bat_avg = float(r.get("bat_avg") or 0)
+        bowl_eco = float(r.get("bowl_eco") or 0)
+        bowl_avg = float(r.get("bowl_avg") or 0)
+        bat_runs = int(float(r.get("bat_runs") or 0))
+        bowl_wkts = int(float(r.get("bowl_wickets") or 0))
+
+        out.append({
+            "name": r["player"],
+            "role": _role(r),
+            "bat_runs": bat_runs,
+            "bat_avg": round(bat_avg, 1),
+            "bat_sr": round(bat_sr, 1),
+            "bowl_wickets": bowl_wkts,
+            "bowl_eco": round(bowl_eco, 2),
+            "bowl_avg": round(bowl_avg, 1),
+        })
+
+    return {
+        "team": team_name,
+        "season": actual_season,
+        "players": out,
+        "source": "player_stats",
+    }
 
 
 @app.get("/matches/{match_id}/players")

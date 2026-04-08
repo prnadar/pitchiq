@@ -50,6 +50,11 @@ SIGNAL_FEATURES = [
     "venue_avg_score",   # r=−0.034 (venue characteristic)
     "t1_venue_rate",     # r=−0.017
     "t2_venue_rate",     # r=+0.008
+    # v4: player quality from previous season (no future leakage)
+    "t1_bat_quality",    # team1 avg batting SR of top-5 batters (normalised)
+    "t2_bat_quality",    # team2 avg batting SR of top-5 batters (normalised)
+    "t1_bowl_quality",   # team1 avg bowling economy of top-4 bowlers (normalised)
+    "t2_bowl_quality",   # team2 avg bowling economy of top-4 bowlers (normalised)
 ]
 
 

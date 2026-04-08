@@ -1,6 +1,6 @@
 """Feature engineering for IPL match prediction.
 
-Builds 19 features from historical match data for the ensemble model.
+Builds 23 features from historical match data for the ensemble model.
 
 v3 additions:
 - home_advantage     : 1 if team1 is playing at their home venue
@@ -8,6 +8,12 @@ v3 additions:
 - t2_season_form     : team2 win rate in current season
 - elo_t1_adv         : seasonal-decay ELO advantage (resets 50% each new season)
 - pitch_type         : 0=flat, 1=balanced, 2=spin, 3=seam
+
+v4 additions (player quality from previous season — no future leakage):
+- t1_bat_quality     : team1 avg bat SR of top-5 batters (normalised SR/200)
+- t2_bat_quality     : team2 avg bat SR of top-5 batters
+- t1_bowl_quality    : team1 avg economy of top-4 bowlers (normalised (12-eco)/12)
+- t2_bowl_quality    : team2 avg economy of top-4 bowlers
 """
 from __future__ import annotations
 
@@ -19,6 +25,7 @@ from typing import Optional
 import numpy as np
 
 DEFAULT_CSV = Path(__file__).resolve().parents[2] / "data" / "matches.csv"
+DEFAULT_PLAYER_STATS_CSV = Path(__file__).resolve().parents[2] / "data" / "player_season_stats.csv"
 
 # ---------------------------------------------------------------------------
 # ELO settings — partial reset each season to account for squad changes
@@ -135,6 +142,117 @@ def _venue_pitch_type(venue: str) -> int:
     return DEFAULT_PITCH_TYPE
 
 
+class PlayerStatsLoader:
+    """Loads player_season_stats.csv and provides team-level quality signals.
+
+    All lookups use *previous-season* data to prevent future leakage.
+    """
+
+    def __init__(self, csv_path: Optional[str | Path] = None) -> None:
+        self._path = Path(csv_path) if csv_path else DEFAULT_PLAYER_STATS_CSV
+        # Nested: season → team → list of row dicts
+        self._data: dict[int, dict[str, list[dict]]] = {}
+        self._available = False
+        self._load()
+
+    def _load(self) -> None:
+        if not self._path.exists():
+            return
+        with open(self._path, newline="") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                try:
+                    season = int(row["season"])
+                    team = row["team"].strip()
+                    if not team:
+                        continue
+                    if season not in self._data:
+                        self._data[season] = {}
+                    if team not in self._data[season]:
+                        self._data[season][team] = []
+                    self._data[season][team].append(row)
+                except (ValueError, KeyError):
+                    continue
+        self._available = bool(self._data)
+
+    @property
+    def available(self) -> bool:
+        return self._available
+
+    def _get_team_rows(self, team: str, season: int) -> list[dict]:
+        """Return rows for a team in a given season, empty list if not found."""
+        return self._data.get(season, {}).get(team, [])
+
+    def team_batting_quality(self, team: str, before_season: int) -> float:
+        """Average bat_sr of top-5 batters by runs in the season before *before_season*.
+
+        Falls back to 2 seasons prior if no data found. Returns 0.5 (normalised) as
+        default (equivalent to SR=100, which is normalised to 100/200=0.5).
+        """
+        if not self._available:
+            return 0.5
+
+        for offset in (1, 2):
+            lookup_season = before_season - offset
+            rows = self._get_team_rows(team, lookup_season)
+            if rows:
+                # Sort by bat_runs descending, take top 5
+                sorted_rows = sorted(
+                    rows,
+                    key=lambda r: int(r.get("bat_runs", 0) or 0),
+                    reverse=True,
+                )[:5]
+                srs = []
+                for r in sorted_rows:
+                    try:
+                        sr = float(r["bat_sr"])
+                        balls = int(r.get("bat_balls", 0) or 0)
+                        if balls >= 10:  # only include players with meaningful exposure
+                            srs.append(sr)
+                    except (ValueError, KeyError):
+                        continue
+                if srs:
+                    avg_sr = sum(srs) / len(srs)
+                    return min(1.0, max(0.0, avg_sr / 200.0))
+
+        return 0.5
+
+    def team_bowling_quality(self, team: str, before_season: int) -> float:
+        """Average bowl_eco of top-4 bowlers by wickets in the season before *before_season*.
+
+        Falls back to 2 seasons prior if no data found. Returns 0.5 as default
+        (equivalent to eco=6, normalised as (12-6)/12=0.5).
+        """
+        if not self._available:
+            return 0.5
+
+        for offset in (1, 2):
+            lookup_season = before_season - offset
+            rows = self._get_team_rows(team, lookup_season)
+            if rows:
+                # Sort by bowl_wickets descending, take top 4
+                sorted_rows = sorted(
+                    rows,
+                    key=lambda r: int(r.get("bowl_wickets", 0) or 0),
+                    reverse=True,
+                )[:4]
+                ecos = []
+                for r in sorted_rows:
+                    try:
+                        eco = float(r["bowl_eco"])
+                        balls = int(r.get("bowl_balls", 0) or 0)
+                        if balls >= 12:  # at least 2 overs bowled
+                            ecos.append(eco)
+                    except (ValueError, KeyError):
+                        continue
+                if ecos:
+                    avg_eco = sum(ecos) / len(ecos)
+                    normalised = (12.0 - avg_eco) / 12.0
+                    return min(1.0, max(0.0, normalised))
+
+        return 0.5
+
+
 @dataclass(frozen=True)
 class MatchRow:
     id: int
@@ -153,11 +271,16 @@ class MatchRow:
 
 
 class FeatureBuilder:
-    """Loads matches.csv and builds the 19 prediction features."""
+    """Loads matches.csv and builds the 23 prediction features."""
 
-    def __init__(self, csv_path: Optional[str | Path] = None) -> None:
+    def __init__(
+        self,
+        csv_path: Optional[str | Path] = None,
+        player_stats_path: Optional[str | Path] = None,
+    ) -> None:
         self._csv_path = Path(csv_path) if csv_path else DEFAULT_CSV
         self._matches: list[MatchRow] = []
+        self._player_stats = PlayerStatsLoader(player_stats_path)
         self._load()
 
     def _load(self) -> None:
@@ -288,7 +411,7 @@ class FeatureBuilder:
     # ------------------------------------------------------------------
 
     def build_features_for_match(self, index: int) -> dict[str, float]:
-        """Build the 19-feature dict for the match at *index* using only prior data."""
+        """Build the 23-feature dict for the match at *index* using only prior data."""
         m = self._matches[index]
 
         t1_form_5 = self._team_form(m.team1, index, 5)
@@ -311,6 +434,12 @@ class FeatureBuilder:
         elo_t1_adv = self._elo_advantage(m.team1, m.team2, index)
         home_adv = _is_home(m.team1, m.venue) - _is_home(m.team2, m.venue)
 
+        # Player quality features (previous season only — no leakage)
+        t1_bat_quality = self._player_stats.team_batting_quality(m.team1, m.season)
+        t2_bat_quality = self._player_stats.team_batting_quality(m.team2, m.season)
+        t1_bowl_quality = self._player_stats.team_bowling_quality(m.team1, m.season)
+        t2_bowl_quality = self._player_stats.team_bowling_quality(m.team2, m.season)
+
         return {
             "t1_form_5": t1_form_5,
             "t2_form_5": t2_form_5,
@@ -331,6 +460,10 @@ class FeatureBuilder:
             "pitch_type": pitch_type,
             "elo_t1_adv": elo_t1_adv,
             "home_adv": home_adv,
+            "t1_bat_quality": t1_bat_quality,
+            "t2_bat_quality": t2_bat_quality,
+            "t1_bowl_quality": t1_bowl_quality,
+            "t2_bowl_quality": t2_bowl_quality,
         }
 
     def build_features_for_new_match(
@@ -368,6 +501,12 @@ class FeatureBuilder:
         elo_t1_adv = self._elo_advantage(team1, team2, n)
         home_adv = _is_home(team1, venue) - _is_home(team2, venue)
 
+        # Player quality features (previous season only — no leakage)
+        t1_bat_quality = self._player_stats.team_batting_quality(team1, season)
+        t2_bat_quality = self._player_stats.team_batting_quality(team2, season)
+        t1_bowl_quality = self._player_stats.team_bowling_quality(team1, season)
+        t2_bowl_quality = self._player_stats.team_bowling_quality(team2, season)
+
         return {
             "t1_form_5": t1_form_5,
             "t2_form_5": t2_form_5,
@@ -388,6 +527,10 @@ class FeatureBuilder:
             "pitch_type": pitch_type,
             "elo_t1_adv": elo_t1_adv,
             "home_adv": home_adv,
+            "t1_bat_quality": t1_bat_quality,
+            "t2_bat_quality": t2_bat_quality,
+            "t1_bowl_quality": t1_bowl_quality,
+            "t2_bowl_quality": t2_bowl_quality,
         }
 
     def build_dataset(self, min_index: int = 50) -> tuple[np.ndarray, np.ndarray]:
@@ -413,4 +556,6 @@ class FeatureBuilder:
             "toss_venue_adv", "t1_has_toss", "toss_bat_1st",
             "form_diff", "venue_avg_score",
             "pitch_type", "elo_t1_adv", "home_adv",
+            "t1_bat_quality", "t2_bat_quality",
+            "t1_bowl_quality", "t2_bowl_quality",
         ]

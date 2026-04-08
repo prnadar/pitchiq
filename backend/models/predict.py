@@ -24,6 +24,8 @@ _DEFAULT_SIGNAL_FEATURES = [
     "home_adv", "t1_has_toss", "toss_venue_adv",
     "t1_form_5", "t2_form_5", "t2_form_3", "t1_form_3",
     "elo_t1_adv", "venue_avg_score", "t1_venue_rate", "t2_venue_rate",
+    # v4: player quality features
+    "t1_bat_quality", "t2_bat_quality", "t1_bowl_quality", "t2_bowl_quality",
 ]
 
 
