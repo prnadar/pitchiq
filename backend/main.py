@@ -252,13 +252,13 @@ async def matches_upcoming_with_predictions() -> dict[str, Any]:
                 "pitch_type": 1.0, "elo_t1_adv": 0.0, "home_adv": 0.0,
             }
 
-            class _FakeResult:
-                t1_win_prob = t1_prob
-                t2_win_prob = t2_prob
-                confidence = confidence
-                confidence_label = confidence_label
-
-            result = _FakeResult()
+            from types import SimpleNamespace
+            result = SimpleNamespace(
+                t1_win_prob=t1_prob,
+                t2_win_prob=t2_prob,
+                confidence=confidence,
+                confidence_label=confidence_label,
+            )
 
         # Generate odds with ~5% bookmaker margin (overround)
         MARGIN = 1.05
