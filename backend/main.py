@@ -315,6 +315,7 @@ async def matches_upcoming_with_predictions() -> dict[str, Any]:
         odds_t2 = round(MARGIN / t2_prob, 2) if t2_prob > 0 else 2.0
 
         # Try to merge real bookmaker odds
+        odds_book = "AI Model"
         try:
             from backend.services.odds import get_live_odds
             live_odds_list = await get_live_odds()
@@ -322,6 +323,13 @@ async def matches_upcoming_with_predictions() -> dict[str, Any]:
                 if lo["team1"] == t1 and lo["team2"] == t2 and lo["best_odds_t1"] > 0:
                     odds_t1 = lo["best_odds_t1"]
                     odds_t2 = lo["best_odds_t2"]
+                    odds_book = lo.get("best_bookie_t1") or "Bookmaker"
+                    break
+                # Handle reversed team ordering from odds API
+                if lo["team1"] == t2 and lo["team2"] == t1 and lo["best_odds_t1"] > 0:
+                    odds_t1 = lo["best_odds_t2"]
+                    odds_t2 = lo["best_odds_t1"]
+                    odds_book = lo.get("best_bookie_t2") or "Bookmaker"
                     break
         except Exception:
             pass  # keep model-generated odds
@@ -369,7 +377,7 @@ async def matches_upcoming_with_predictions() -> dict[str, Any]:
             "confidence_label": confidence_label,
             "odds_t1": odds_t1,
             "odds_t2": odds_t2,
-            "odds_book": "Sample",
+            "odds_book": odds_book,
             "is_value_bet": is_value_bet,
             "form_t1": form_t1,
             "form_t2": form_t2,
