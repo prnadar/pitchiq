@@ -190,7 +190,7 @@ async def matches_upcoming() -> dict[str, Any]:
     """Returns upcoming IPL matches (next 7 days)."""
     try:
         from backend.services.cricket import get_upcoming_matches
-        matches = await get_upcoming_matches(days=7)
+        matches = await get_upcoming_matches(days=60)
         return {"matches": matches, "source": "live"}
     except RuntimeError:
         return {"matches": [], "source": "unavailable", "message": "Set CRICKET_API_KEY env var"}
@@ -244,7 +244,7 @@ async def matches_upcoming_with_predictions() -> dict[str, Any]:
     # Try live cricket API first; fall back to sample fixtures
     try:
         from backend.services.cricket import get_upcoming_matches
-        live = await get_upcoming_matches(days=7)
+        live = await get_upcoming_matches(days=60)
         fixtures = [
             {
                 "match_id": m["match_id"] or f"live-{i}",

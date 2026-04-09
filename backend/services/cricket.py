@@ -119,15 +119,16 @@ async def get_upcoming_matches(days: int = 7) -> list[dict[str, Any]]:
     if data.get("status") != "success":
         return []
 
-    now = datetime.now(timezone.utc)
+    today = datetime.now(timezone.utc).date()
     matches: list[dict[str, Any]] = []
     for raw in data.get("data", []):
         parsed = _parse_match(raw)
         if not parsed:
             continue
         try:
-            md = datetime.strptime(parsed["match_date"], "%Y-%m-%d").replace(tzinfo=timezone.utc)
-            if 0 <= (md - now).days <= days:
+            md = datetime.strptime(parsed["match_date"], "%Y-%m-%d").date()
+            delta = (md - today).days
+            if -1 <= delta <= days:
                 matches.append(parsed)
         except (ValueError, TypeError):
             continue
