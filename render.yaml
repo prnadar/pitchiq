@@ -14,14 +14,6 @@ services:
         generateValue: true
       - key: ADMIN_KEY
         generateValue: true
-      # Optional integrations — set in the Render dashboard, never commit values.
-      - key: CRICKET_API_KEY
-        sync: false
-      - key: ODDS_API_KEY
-        sync: false
-      - key: SUPABASE_URL
-        sync: false
-      - key: SUPABASE_KEY
-        sync: false
-      - key: RESEND_API_KEY
-        sync: false
+      # Optional integrations (CRICKET_API_KEY, ODDS_API_KEY, SUPABASE_URL,
+      # SUPABASE_KEY, RESEND_API_KEY) are added in the Render dashboard so the
+      # blueprint deploys with no input. See README.md. Never commit values.
