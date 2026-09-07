@@ -652,6 +652,18 @@ function buildCard(pred, i, isLocked) {
         </div>
       </div>
 
+      <!-- ── RELATED NEWS PANEL ── -->
+      <div class="mt-0">
+        <button onclick="togglePanel(this,'matchnews')" class="flex items-center gap-1.5 w-full text-left py-2.5 border-t border-outline-variant">
+          <span class="material-symbols-outlined text-on-surface-variant" style="font-size:15px">newspaper</span>
+          <span class="text-xs font-headline font-bold text-on-surface-variant flex-1">Latest news on these teams</span>
+          <span class="material-symbols-outlined tab-arrow text-on-surface-variant" style="font-size:16px">expand_more</span>
+        </button>
+        <div class="expand-panel matchnews-panel" data-t1="${encodeURIComponent(pred.team1)}" data-t2="${encodeURIComponent(pred.team2)}">
+          <div class="matchnews-content"></div>
+        </div>
+      </div>
+
       <!-- Actions -->
       <div class="flex gap-2 mt-4 pt-1">
         <button class="flex-1 py-3 bg-secondary text-on-secondary-fixed font-headline font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-secondary-dim transition-all" onclick="savePrediction(this)">
@@ -741,6 +753,7 @@ function togglePanel(btn, type) {
         arrow.classList.add('open');
         // Lazy-load lineups
         if (type === 'lineup') loadLineup(panel);
+        if (type === 'matchnews') loadMatchNews(panel);
     } else {
         panel.classList.remove('open');
         arrow.classList.remove('open');
@@ -999,6 +1012,48 @@ function showLeaderboard() {
         </div>
         ${rows}
     </div>`;
+}
+
+// ─── Related news on a match card ─────────────────────────────────────────────
+// Same escaping rules as the news feed: every field below is third-party text.
+async function loadMatchNews(panel) {
+    const t1 = decodeURIComponent(panel.dataset.t1 || '');
+    const t2 = decodeURIComponent(panel.dataset.t2 || '');
+    const content = panel.querySelector('.matchnews-content');
+    if (!content || content.dataset.loaded) return;
+    content.dataset.loaded = '1';
+    content.innerHTML = '<p class="py-3 text-xs text-on-surface-variant font-label text-center">Looking for related stories…</p>';
+
+    try {
+        const url = `${API_BASE}/matches/news?team1=${encodeURIComponent(t1)}&team2=${encodeURIComponent(t2)}&limit=4`;
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error('unavailable');
+        const items = (await resp.json()).items || [];
+        if (!items.length) {
+            // Honest empty state: outside the IPL window there is often
+            // genuinely nothing about these two sides.
+            content.innerHTML = `
+                <p class="py-3 text-xs text-on-surface-variant font-label text-center">
+                    No recent news mentioning these teams.
+                    <button onclick="showNews()" class="text-primary underline underline-offset-2 ml-1">See all cricket news</button>
+                </p>`;
+            return;
+        }
+        content.innerHTML = `<div class="py-2 space-y-1.5">${items.map(i => `
+            <a href="${encodeURI(i.link || '')}" target="_blank" rel="noopener noreferrer external"
+               class="flex items-start gap-2.5 p-2.5 rounded-lg hover:bg-surface-container transition-colors group">
+                <span class="material-symbols-outlined text-on-surface-variant mt-0.5 shrink-0" style="font-size:14px">article</span>
+                <div class="flex-1 min-w-0">
+                    <p class="text-[11px] font-headline font-bold text-on-surface leading-snug group-hover:text-primary transition-colors">${escapeHtml(i.title)}</p>
+                    <p class="text-[9px] text-on-surface-variant font-label mt-0.5">
+                        ${escapeHtml(i.source)}${i.published ? ' · ' + escapeHtml(timeAgo(i.published)) : ''}
+                    </p>
+                </div>
+            </a>`).join('')}</div>`;
+    } catch (err) {
+        content.dataset.loaded = '';  // allow a retry on next open
+        content.innerHTML = '<p class="py-3 text-xs text-on-surface-variant font-label text-center">Could not load related news.</p>';
+    }
 }
 
 // ─── Cricket News ─────────────────────────────────────────────────────────────

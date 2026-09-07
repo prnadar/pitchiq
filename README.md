@@ -128,6 +128,28 @@ in memory for 10 minutes, one failing feed never takes out the others, and if
 every feed fails the last good copy is served with `"stale": true` rather than
 an empty page.
 
+### News linked to a fixture
+
+`GET /matches/news?team1=&team2=` returns headlines that mention either side,
+shown as a "Latest news on these teams" panel on each match card (lazy-loaded
+on open, reusing the cached feed so it costs no extra network call).
+
+Matching is deliberately strict, because the obvious approaches are wrong:
+
+- **A squad member's surname alone does not count.** IPL players also play
+  internationally, so matching on names surfaced unrelated stories about
+  "Archer" and "Jansen", and common surnames like "Sharma" or "Singh" swept up
+  general news.
+- **A place name alone does not count.** "Punjab" matched a Lok Sabha election
+  story. Weak terms (`punjab`, `delhi`, `mumbai`) only count alongside a squad
+  member; strong ones (`punjab kings`, `pbks`) stand on their own.
+- **Anything older than 30 days is dropped.** The feeds carry evergreen video,
+  so without this "IPL 2024 highlights" appears as news about next week.
+
+The result is high precision and low recall: outside the IPL window most
+fixtures legitimately return nothing, and the panel says so rather than showing
+filler. Expect it to be much fuller during the season.
+
 Feed text is third-party input. The browser escapes every field before
 rendering (`escapeHtml` in `frontend/index.html`) and links carry
 `rel="noopener noreferrer external"`. If you touch that rendering path, keep the

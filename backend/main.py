@@ -695,6 +695,40 @@ async def news(limit: int = 20, refresh: bool = False) -> dict[str, Any]:
         raise HTTPException(502, "Could not load cricket news right now.") from exc
 
 
+def _squad_surnames(team: str, season: int = 2025) -> list[str]:
+    """Recent squad members for a team, for matching headlines to a fixture.
+
+    Falls back through earlier seasons the way /teams/{team}/lineup does, and
+    returns [] when player data is unavailable rather than raising.
+    """
+    if not feature_builder or not feature_builder._player_stats.available:
+        return []
+    stats = feature_builder._player_stats
+    for offset in (0, 1, 2):
+        rows = stats._get_team_rows(team, season - offset)
+        if rows:
+            return [str(r.get("player", "")) for r in rows]
+    return []
+
+
+@app.get("/matches/news")
+async def match_news(team1: str, team2: str, limit: int = 4) -> dict[str, Any]:
+    """Headlines related to a fixture, by team name or squad member.
+
+    Returns an empty list when nothing genuinely matches — an off-season IPL
+    fixture often has no current news, and filler would be worse than nothing.
+    """
+    if not team1 or not team2:
+        raise HTTPException(422, "team1 and team2 are required.")
+    try:
+        from backend.services.news import get_related_news
+        players = _squad_surnames(team1) + _squad_surnames(team2)
+        return await get_related_news(teams=(team1, team2), players=players, limit=limit)
+    except Exception as exc:
+        logger.exception("related news lookup failed")
+        raise HTTPException(502, "Could not load related news right now.") from exc
+
+
 @app.post("/auth/signup")
 async def signup(req: SignupRequest) -> dict[str, Any]:
     """Create a new user account. Starts 7-day free trial."""

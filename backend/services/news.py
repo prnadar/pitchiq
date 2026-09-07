@@ -205,3 +205,135 @@ async def get_news(limit: int = DEFAULT_LIMIT, force_refresh: bool = False) -> d
         "sources": sorted({i.source for i in merged}),
         "cached": False,
     }
+
+
+# --- Linking headlines to a fixture ------------------------------------------
+
+# Each side has "strong" terms that only ever mean the cricket team, and "weak"
+# ones that are ordinary places. A weak term alone is not evidence: "Punjab"
+# matched a Lok Sabha election story, "Delhi" matches any city news. Weak terms
+# therefore only count alongside a squad member's name.
+TEAM_KEYWORDS: dict[str, dict[str, tuple[str, ...]]] = {
+    "Mumbai Indians": {"strong": ("mumbai indians",), "weak": ("mumbai",)},
+    "Chennai Super Kings": {"strong": ("chennai super kings", "csk"), "weak": ("chennai",)},
+    "Royal Challengers Bangalore": {
+        "strong": ("royal challengers bangalore", "royal challengers bengaluru", "rcb"),
+        "weak": ("bangalore", "bengaluru"),
+    },
+    "Kolkata Knight Riders": {"strong": ("kolkata knight riders", "kkr"), "weak": ("kolkata",)},
+    "Delhi Capitals": {"strong": ("delhi capitals",), "weak": ("delhi",)},
+    "Rajasthan Royals": {"strong": ("rajasthan royals",), "weak": ("rajasthan",)},
+    "Sunrisers Hyderabad": {"strong": ("sunrisers hyderabad", "sunrisers", "srh"), "weak": ("hyderabad",)},
+    "Punjab Kings": {"strong": ("punjab kings", "pbks"), "weak": ("punjab",)},
+    "Gujarat Titans": {"strong": ("gujarat titans",), "weak": ("gujarat",)},
+    "Lucknow Super Giants": {"strong": ("lucknow super giants", "lsg"), "weak": ("lucknow",)},
+}
+
+STRONG_TEAM_WEIGHT = 3
+WEAK_TEAM_WEIGHT = 1
+PLAYER_MATCH_WEIGHT = 2
+# "Patel" or "Singh" alone are too common to attribute to one squad.
+MIN_SURNAME_LEN = 5
+# Feeds carry evergreen video content — without this, "IPL 2024 highlights"
+# surfaces as news about next week's fixture.
+RELATED_MAX_AGE_DAYS = 30
+DEFAULT_RELATED_LIMIT = 4
+
+
+def team_terms(team: str) -> dict[str, tuple[str, ...]]:
+    """Strong and weak headline terms for a team; unknown teams match on name."""
+    known = TEAM_KEYWORDS.get(team)
+    if known:
+        return known
+    return {"strong": (team.lower(),) if team else (), "weak": ()}
+
+
+def surname_of(player: str) -> str:
+    """'MS Dhoni' -> 'dhoni'. Squad data stores initials, headlines use names.
+
+    Returns "" for surnames too short to attribute confidently.
+    """
+    parts = [p for p in re.split(r"[\s.]+", player.strip()) if p]
+    if not parts:
+        return ""
+    surname = parts[-1].lower()
+    return surname if len(surname) >= MIN_SURNAME_LEN else ""
+
+
+def _mentions(haystack: str, term: str) -> bool:
+    return re.search(rf"\b{re.escape(term)}\b", haystack) is not None
+
+
+def _is_recent(item: NewsItem, now: datetime) -> bool:
+    """Undated items are kept: feeds omit pubDate more often than they lie."""
+    if not item.published:
+        return True
+    try:
+        published = datetime.fromisoformat(item.published)
+    except ValueError:
+        return True
+    return (now - published).days <= RELATED_MAX_AGE_DAYS
+
+
+def score_item(
+    item: NewsItem,
+    strong_terms: Iterable[str],
+    weak_terms: Iterable[str],
+    surnames: Iterable[str],
+) -> int:
+    """How strongly a headline relates to a fixture. 0 means unrelated.
+
+    A team must be identified for the story to count. Squad surnames alone are
+    not enough, because IPL players also appear for their countries — matching
+    on surname pulled in unrelated internationals ("Archer", "Jansen") and
+    common names ("Sharma", "Singh") swept up general news.
+    """
+    haystack = f"{item.title} {item.summary}".lower()
+    players = sum(PLAYER_MATCH_WEIGHT for s in surnames if _mentions(haystack, s))
+    strong = sum(STRONG_TEAM_WEIGHT for t in strong_terms if _mentions(haystack, t))
+    weak = sum(WEAK_TEAM_WEIGHT for t in weak_terms if _mentions(haystack, t))
+
+    if strong:
+        return strong + weak + players
+    # A place name only counts as the team when a squad member appears with it.
+    if weak and players:
+        return weak + players
+    return 0
+
+
+async def get_related_news(
+    teams: Iterable[str],
+    players: Iterable[str] = (),
+    limit: int = DEFAULT_RELATED_LIMIT,
+) -> dict[str, Any]:
+    """Recent headlines that name either side, ranked by how well they fit.
+
+    Reuses the cached feed, so this costs no extra network call. Returns an
+    empty list rather than filler when nothing is genuinely related — an IPL
+    fixture in the off-season legitimately has no current news.
+    """
+    await get_news(limit=MAX_LIMIT)
+    cached = _cache[1] if _cache is not None else ()
+
+    strong: set[str] = set()
+    weak: set[str] = set()
+    for team in teams:
+        terms = team_terms(team)
+        strong.update(terms["strong"])
+        weak.update(terms["weak"])
+    surnames = {s for s in (surname_of(p) for p in players) if s}
+
+    now = datetime.now(timezone.utc)
+    scored = [
+        (score_item(i, strong, weak, surnames), i)
+        for i in cached
+        if _is_recent(i, now)
+    ]
+    related = [(s, i) for s, i in scored if s > 0]
+    # Strongest link first, then most recent.
+    related.sort(key=lambda pair: (pair[0], pair[1].published or ""), reverse=True)
+
+    return {
+        "items": [i.as_dict() | {"relevance": s} for s, i in related[:limit]],
+        "matched_on": sorted(strong | weak | surnames),
+    }

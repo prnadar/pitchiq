@@ -107,3 +107,86 @@ def test_limit_is_clamped(monkeypatch: pytest.MonkeyPatch) -> None:
     import asyncio
 
     assert len(asyncio.run(get_news(limit=9999))["items"]) <= MAX_LIMIT
+
+
+# --- Linking headlines to a fixture ------------------------------------------
+
+from datetime import datetime, timedelta, timezone  # noqa: E402
+
+from backend.services.news import (  # noqa: E402
+    NewsItem, RELATED_MAX_AGE_DAYS, _is_recent, score_item, surname_of, team_terms,
+)
+
+
+def _item(title: str, summary: str = "", published: str = "") -> NewsItem:
+    return NewsItem(title=title, link="https://e.example/x", source="Test",
+                    summary=summary, image="", published=published)
+
+
+def _score(title: str, teams=("Mumbai Indians",), players=()) -> int:
+    strong: set[str] = set()
+    weak: set[str] = set()
+    for t in teams:
+        terms = team_terms(t)
+        strong.update(terms["strong"])
+        weak.update(terms["weak"])
+    surnames = {s for s in (surname_of(p) for p in players) if s}
+    return score_item(_item(title), strong, weak, surnames)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("player,expected", [
+    ("MS Dhoni", "dhoni"), ("A Chopra", "chopra"), ("R Sharma", "sharma"),
+    ("V Kohli", "kohli"), ("S Iyer", ""),  # too short to attribute
+    ("", ""),
+])
+def test_surname_extraction(player: str, expected: str) -> None:
+    assert surname_of(player) == expected
+
+
+@pytest.mark.unit
+def test_named_team_scores() -> None:
+    assert _score("Mumbai Indians seal a thriller") > 0
+
+
+@pytest.mark.unit
+def test_surname_alone_is_not_enough() -> None:
+    """IPL players also play internationals — a surname must not imply the team."""
+    assert _score("Archer displays new-found durability", players=("J Archer",)) == 0
+
+
+@pytest.mark.unit
+def test_place_name_alone_is_not_enough() -> None:
+    """Regression: 'Punjab' matched a Lok Sabha election story."""
+    assert _score("Yuvraj Singh will not contest Lok Sabha polls",
+                  teams=("Punjab Kings",)) == 0
+
+
+@pytest.mark.unit
+def test_place_name_counts_when_a_squad_member_appears() -> None:
+    assert _score("Punjab hand Wadhera a new role",
+                  teams=("Punjab Kings",), players=("N Wadhera",)) > 0
+
+
+@pytest.mark.unit
+def test_squad_member_boosts_a_team_story_above_a_bare_mention() -> None:
+    bare = _score("Mumbai Indians confirm fixtures")
+    with_player = _score("Mumbai Indians confirm Sharma is fit",
+                         players=("R Sharma",))
+    assert with_player > bare
+
+
+@pytest.mark.unit
+def test_stale_items_are_excluded() -> None:
+    """Feeds carry evergreen video; 'IPL 2024 highlights' is not news."""
+    now = datetime.now(timezone.utc)
+    old = (now - timedelta(days=RELATED_MAX_AGE_DAYS + 5)).isoformat()
+    fresh = (now - timedelta(days=1)).isoformat()
+    assert not _is_recent(_item("IPL 2024 highlights", published=old), now)
+    assert _is_recent(_item("Today's report", published=fresh), now)
+
+
+@pytest.mark.unit
+def test_undated_items_are_kept() -> None:
+    """Feeds omit pubDate more often than they misreport it."""
+    assert _is_recent(_item("No date"), datetime.now(timezone.utc))
