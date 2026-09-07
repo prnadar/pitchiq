@@ -67,6 +67,7 @@ tailwind.config = {
     <a class="flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-container text-primary font-headline font-bold text-sm cursor-pointer" onclick="scrollToFeed()"><span class="material-symbols-outlined fill-icon">dynamic_feed</span>Match Feed</a>
     <a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all font-headline font-bold text-sm cursor-pointer" onclick="showMyPredictions()"><span class="material-symbols-outlined">query_stats</span>My Predictions</a>
     <a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all font-headline font-bold text-sm cursor-pointer" onclick="showLeaderboard()"><span class="material-symbols-outlined">leaderboard</span>Leaderboard</a>
+    <a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all font-headline font-bold text-sm cursor-pointer" onclick="showNews()"><span class="material-symbols-outlined">newspaper</span>Cricket News</a>
     <a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all font-headline font-bold text-sm cursor-pointer" onclick="showComingSoon('Analytics')"><span class="material-symbols-outlined">analytics</span>Analytics</a>
     <div class="my-3 border-t border-outline-variant"></div>
     <a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all font-headline font-bold text-sm cursor-pointer" onclick="showComingSoon('Settings')"><span class="material-symbols-outlined">settings</span>Settings</a>
@@ -247,6 +248,7 @@ tailwind.config = {
   <a class="flex flex-col items-center justify-center text-secondary gap-0.5 cursor-pointer" onclick="scrollToFeed()"><span class="material-symbols-outlined fill-icon">dynamic_feed</span><span class="font-label text-[9px] font-medium uppercase">Feed</span></a>
   <a class="flex flex-col items-center justify-center text-on-surface-variant gap-0.5 cursor-pointer" onclick="showMyPredictions()"><span class="material-symbols-outlined">query_stats</span><span class="font-label text-[9px] font-medium uppercase">Picks</span></a>
   <a class="flex flex-col items-center justify-center text-on-surface-variant gap-0.5 cursor-pointer" onclick="showLeaderboard()"><span class="material-symbols-outlined">leaderboard</span><span class="font-label text-[9px] font-medium uppercase">Board</span></a>
+  <a class="flex flex-col items-center justify-center text-on-surface-variant gap-0.5 cursor-pointer" onclick="showNews()"><span class="material-symbols-outlined">newspaper</span><span class="font-label text-[9px] font-medium uppercase">News</span></a>
   <a class="flex flex-col items-center justify-center text-on-surface-variant gap-0.5 cursor-pointer" onclick="showModal('signup')"><span class="material-symbols-outlined">workspace_premium</span><span class="font-label text-[9px] font-medium uppercase">Pro</span></a>
 </nav>
 
@@ -262,6 +264,7 @@ tailwind.config = {
       <a class="flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-container text-primary font-headline font-bold text-sm cursor-pointer" onclick="closeMobileSidebar();scrollToFeed()"><span class="material-symbols-outlined fill-icon">dynamic_feed</span>Match Feed</a>
       <a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant font-headline font-bold text-sm cursor-pointer" onclick="showMyPredictions()"><span class="material-symbols-outlined">query_stats</span>My Predictions</a>
       <a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant font-headline font-bold text-sm cursor-pointer" onclick="showLeaderboard()"><span class="material-symbols-outlined">leaderboard</span>Leaderboard</a>
+      <a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant font-headline font-bold text-sm cursor-pointer" onclick="showNews()"><span class="material-symbols-outlined">newspaper</span>Cricket News</a>
     </nav>
     <div class="p-4 border-t border-outline-variant space-y-2">
       <button class="w-full py-3 bg-secondary text-on-secondary-fixed font-headline font-bold text-xs uppercase tracking-widest rounded-xl" onclick="showModal('signup');closeMobileSidebar()">Start Free Trial</button>
@@ -996,6 +999,105 @@ function showLeaderboard() {
         </div>
         ${rows}
     </div>`;
+}
+
+// ─── Cricket News ─────────────────────────────────────────────────────────────
+// Feed text comes from third-party RSS, so every interpolated value below is
+// escaped. Never switch these to raw interpolation.
+function escapeHtml(value) {
+    return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function timeAgo(iso) {
+    if (!iso) return '';
+    const then = Date.parse(iso);
+    if (Number.isNaN(then)) return '';
+    const mins = Math.round((Date.now() - then) / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return mins + 'm ago';
+    const hrs = Math.round(mins / 60);
+    if (hrs < 24) return hrs + 'h ago';
+    return Math.round(hrs / 24) + 'd ago';
+}
+
+function newsCard(item) {
+    const title = escapeHtml(item.title);
+    const link = encodeURI(item.link || '');
+    const source = escapeHtml(item.source);
+    const summary = escapeHtml(item.summary);
+    const when = escapeHtml(timeAgo(item.published));
+    // Images are remote and often hotlink-protected; hide on error.
+    const thumb = item.image ? `
+        <img src="${encodeURI(item.image)}" alt="" loading="lazy" referrerpolicy="no-referrer"
+             class="w-24 h-24 sm:w-28 sm:h-28 object-cover rounded-lg shrink-0 bg-surface-container"
+             onerror="this.remove()">` : '';
+    return `
+    <a href="${link}" target="_blank" rel="noopener noreferrer external"
+       class="flex gap-4 p-4 bg-surface-container-low border border-outline-variant rounded-xl hover:border-primary/60 transition-colors group">
+        ${thumb}
+        <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 mb-1.5">
+                <span class="font-label text-[10px] font-bold uppercase tracking-wider text-primary">${source}</span>
+                ${when ? `<span class="font-label text-[10px] text-on-surface-variant">· ${when}</span>` : ''}
+            </div>
+            <p class="font-headline font-bold text-sm text-on-surface leading-snug group-hover:text-primary transition-colors">${title}</p>
+            ${summary ? `<p class="mt-1.5 text-xs text-on-surface-variant font-label leading-relaxed line-clamp-2">${summary}</p>` : ''}
+        </div>
+        <span class="material-symbols-outlined text-on-surface-variant self-center shrink-0" style="font-size:18px">open_in_new</span>
+    </a>`;
+}
+
+async function showNews() {
+    closeMobileSidebar && closeMobileSidebar();
+    const feed = document.getElementById('predictions-feed');
+    const shell = (body) => `
+    <div class="fade-up space-y-3 pb-28 lg:pb-8">
+        <div class="flex items-center justify-between mb-2">
+            <div>
+                <h3 class="font-headline font-bold text-lg text-on-surface">Cricket News</h3>
+                <p class="text-xs text-on-surface-variant font-label" id="news-sub">Latest headlines from across the game</p>
+            </div>
+            <button onclick="loadPredictions()" class="flex items-center gap-1.5 text-xs font-headline font-bold text-on-surface-variant hover:text-on-surface transition-colors">
+                <span class="material-symbols-outlined" style="font-size:16px">arrow_back</span>Back
+            </button>
+        </div>
+        ${body}
+    </div>`;
+
+    feed.innerHTML = shell(`
+        <div class="p-8 text-center text-on-surface-variant font-label text-sm">
+            <span class="material-symbols-outlined animate-spin" style="font-size:20px">progress_activity</span>
+            <p class="mt-2">Loading headlines…</p>
+        </div>`);
+
+    try {
+        const resp = await fetch(API_BASE + '/news?limit=25');
+        if (!resp.ok) throw new Error('Feed unavailable (' + resp.status + ')');
+        const data = await resp.json();
+        const items = data.items || [];
+        if (!items.length) {
+            feed.innerHTML = shell(`
+                <div class="p-8 text-center text-on-surface-variant font-label text-sm">
+                    No headlines available right now. Please try again shortly.
+                </div>`);
+            return;
+        }
+        feed.innerHTML = shell(items.map(newsCard).join(''));
+        const sub = document.getElementById('news-sub');
+        if (sub) {
+            sub.textContent = items.length + ' stories from ' + (data.sources || []).join(', ')
+                + (data.stale ? ' · cached' : '');
+        }
+    } catch (err) {
+        feed.innerHTML = shell(`
+            <div class="p-8 text-center font-label text-sm">
+                <p class="text-on-surface">Could not load cricket news.</p>
+                <p class="text-on-surface-variant text-xs mt-1">${escapeHtml(err.message)}</p>
+                <button onclick="showNews()" class="mt-4 px-4 py-2 border border-outline-variant rounded-xl font-headline font-bold text-xs uppercase tracking-widest text-on-surface-variant hover:text-on-surface">Retry</button>
+            </div>`);
+    }
 }
 
 // ─── Share ────────────────────────────────────────────────────────────────────

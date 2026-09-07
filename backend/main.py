@@ -1,6 +1,6 @@
 """PitchIQ FastAPI backend.
 
-Endpoints: /predict, /matches, /odds, /auth, /health, /train
+Endpoints: /predict, /matches, /odds, /news, /auth, /health, /train
 """
 from __future__ import annotations
 
@@ -677,6 +677,22 @@ async def odds_live(authorization: str = Header(default="")) -> dict[str, Any]:
         return {"odds": odds}
     except RuntimeError as e:
         return {"odds": [], "message": str(e)}
+
+
+@app.get("/news")
+async def news(limit: int = 20, refresh: bool = False) -> dict[str, Any]:
+    """Aggregated cricket headlines from public RSS feeds.
+
+    Free and unauthenticated: it needs no API key and costs no prediction
+    quota, so it works even when every optional integration is unconfigured.
+    Text comes from third parties — the client escapes it before rendering.
+    """
+    try:
+        from backend.services.news import get_news
+        return await get_news(limit=limit, force_refresh=refresh)
+    except Exception as exc:
+        logger.exception("news aggregation failed")
+        raise HTTPException(502, "Could not load cricket news right now.") from exc
 
 
 @app.post("/auth/signup")
