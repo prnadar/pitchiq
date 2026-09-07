@@ -1,0 +1,59 @@
+# PitchIQ — CO-HOSTED on the Hostinger VPS that already runs FortuneKraft and
+# Life Set Hai Bhai behind FortuneKraft's Caddy. Same pattern as
+# fortunekraft/lifesethaibhai/docker-compose.cohost.yml: this stack runs NO
+# Caddy of its own and binds NO host 80/443.
+#
+# Service names are prefixed (pitchiq-*) so nothing shadows the other stacks'
+# service names on the shared proxy network.
+#
+# Integration — add to FortuneKraft's Caddyfile, then reload Caddy:
+#
+#   pitchiq.adverttize.com {
+#       reverse_proxy pitchiq-web:8000
+#   }
+#
+# Deploy:
+#   docker compose -f docker-compose.cohost.yml --env-file .env.production up -d --build
+#
+# .env.production needs at minimum:
+#   JWT_SECRET=<openssl rand -hex 32>
+# Optional: ADMIN_KEY, CRICKET_API_KEY, ODDS_API_KEY, SUPABASE_URL,
+# SUPABASE_KEY, RESEND_API_KEY. See README.md.
+
+services:
+  pitchiq-web:
+    build:
+      context: .
+    image: pitchiq:latest
+    restart: unless-stopped
+    environment:
+      # Required — the app refuses to sign tokens without it.
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env.production}
+      # Optional integrations; unset simply disables that feature.
+      ADMIN_KEY: ${ADMIN_KEY:-}
+      CRICKET_API_KEY: ${CRICKET_API_KEY:-}
+      ODDS_API_KEY: ${ODDS_API_KEY:-}
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_KEY: ${SUPABASE_KEY:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+    ports:
+      # Loopback only — for health checks on the VPS itself. 5181 is LSHB's.
+      - "127.0.0.1:5182:8000"
+    networks:
+      - proxy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health',timeout=4).status==200 else 1)"
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+networks:
+  # FortuneKraft's existing Caddy network — reused so its proxy reaches pitchiq-web.
+  proxy:
+    external: true
+    name: internal-tool_default

@@ -68,6 +68,37 @@ of inactivity, so the first request after idle takes ~50 seconds.
 Optional API keys are added afterwards under **Environment** in the Render
 dashboard; the service redeploys automatically.
 
+### Co-hosting on the existing Hostinger VPS (preferred)
+
+The VPS already running FortuneKraft and Life Set Hai Bhai has a shared Caddy on
+the `internal-tool_default` Docker network. `docker-compose.cohost.yml` slots
+PitchIQ in behind it — no second Caddy, no host port 80/443 — following the same
+pattern as `fortunekraft/lifesethaibhai/docker-compose.cohost.yml`:
+
+```bash
+ssh <vps>
+git clone https://github.com/prnadar/pitchiq.git /opt/pitchiq && cd /opt/pitchiq
+printf 'JWT_SECRET=%s\n' "$(openssl rand -hex 32)" > .env.production
+docker compose -f docker-compose.cohost.yml --env-file .env.production up -d --build
+curl -s localhost:5182/health   # expect models_loaded: true, startup_errors: []
+```
+
+Then add to FortuneKraft's Caddyfile and reload Caddy:
+
+```
+pitchiq.adverttize.com {
+    reverse_proxy pitchiq-web:8000
+}
+```
+
+Point a DNS A record for `pitchiq` at the VPS IP first, or Caddy cannot issue
+the certificate. Costs nothing beyond the VPS you already run, never sleeps,
+and the in-memory usage counters behave correctly on a persistent process.
+
+The `Dockerfile` installs `libgomp1` deliberately: `python:*-slim` omits the
+OpenMP runtime that XGBoost and LightGBM link against, and without it the
+models fail to load with `libgomp.so.1: cannot open shared object file`.
+
 ### Vercel does not work — don't retry it
 
 Tested on 2026-09-07 and abandoned for two independent reasons:
