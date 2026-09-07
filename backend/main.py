@@ -120,6 +120,12 @@ def _dev_auth_allowed() -> bool:
     return os.environ.get("ALLOW_DEV_AUTH", "").lower() in ("1", "true", "yes")
 
 
+def _accounts_enabled() -> bool:
+    """Whether signup/login can actually work, for the UI to branch on."""
+    has_db = bool(os.environ.get("SUPABASE_URL")) and bool(os.environ.get("SUPABASE_KEY"))
+    return has_db or _dev_auth_allowed()
+
+
 def _auth_unavailable() -> HTTPException:
     logger.error(
         "Auth requested but SUPABASE_URL/SUPABASE_KEY are not configured "
@@ -147,6 +153,7 @@ async def health() -> dict[str, Any]:
         "models_loaded": predictor is not None and predictor.is_loaded,
         "matches_loaded": feature_builder is not None,
         "match_count": len(feature_builder.matches) if feature_builder else 0,
+        "accounts_enabled": _accounts_enabled(),
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 

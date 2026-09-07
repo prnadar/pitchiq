@@ -384,8 +384,25 @@ const TEAM_COLORS = {
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 async function init() {
+    await applyAccountsAvailability();
     if (currentUser && authToken) setLoggedInUI();
     await loadPredictions();
+}
+
+async function applyAccountsAvailability() {
+    try {
+        const resp = await fetch(API_BASE + '/health');
+        if (!resp.ok) return;
+        accountsEnabled = (await resp.json()).accounts_enabled !== false;
+    } catch (e) {
+        return;  // Leave accounts enabled; the auth call itself will report failure.
+    }
+    if (accountsEnabled) return;
+    // Hide the header calls-to-action so we don't advertise what we can't deliver.
+    ['btn-login', 'btn-join'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+    });
 }
 
 async function loadPredictions() {
@@ -831,7 +848,17 @@ function handleLogout() {
 }
 
 // ─── Modals ───────────────────────────────────────────────────────────────────
-function showModal(type) { document.getElementById('modal-'+type).classList.add('active'); document.body.style.overflow='hidden'; }
+// Set from /health. When the backend has no user database, signup/login
+// return 503, so send people to a toast instead of a form that cannot work.
+let accountsEnabled = true;
+
+function showModal(type) {
+    if (!accountsEnabled && (type === 'signup' || type === 'login' || type === 'pricing')) {
+        showComingSoon('Account sign-up');
+        return;
+    }
+    document.getElementById('modal-'+type).classList.add('active'); document.body.style.overflow='hidden';
+}
 function hideModal(type) { document.getElementById('modal-'+type).classList.remove('active'); document.body.style.overflow=''; }
 document.querySelectorAll('.modal-backdrop').forEach(el => {
     el.addEventListener('click', e => { if(e.target===el){el.classList.remove('active');document.body.style.overflow='';} });
