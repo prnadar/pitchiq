@@ -68,23 +68,6 @@ of inactivity, so the first request after idle takes ~50 seconds.
 Optional API keys are added afterwards under **Environment** in the Render
 dashboard; the service redeploys automatically.
 
-## Cricket news
-
-`GET /news?limit=25` aggregates headlines from public RSS feeds — ESPNcricinfo,
-Indian Express and BBC Sport — merged, de-duplicated by title and sorted newest
-first. Reachable from the News tab in the app.
-
-RSS was chosen over a news API deliberately: it needs no key, so news works on a
-bare deploy where every optional integration is unconfigured. Results are cached
-in memory for 10 minutes, one failing feed never takes out the others, and if
-every feed fails the last good copy is served with `"stale": true` rather than
-an empty page.
-
-Feed text is third-party input. The browser escapes every field before
-rendering (`escapeHtml` in `frontend/index.html`) and links carry
-`rel="noopener noreferrer external"`. If you touch that rendering path, keep the
-escaping — the fields land in `innerHTML`.
-
 ### Co-hosting on the existing Hostinger VPS (preferred)
 
 The VPS already running FortuneKraft and Life Set Hai Bhai has a shared Caddy on
@@ -132,3 +115,20 @@ Tested on 2026-09-07 and abandoned for two independent reasons:
 
 Point 2 applies to any serverless host. Fixing it means moving that state into
 Supabase or Redis; point 1 would still rule out Vercel afterwards.
+
+## Cricket news
+
+`GET /news?limit=25` aggregates headlines from public RSS feeds — ESPNcricinfo,
+Indian Express and BBC Sport — merged, de-duplicated by title and sorted newest
+first. Reachable from the News tab in the app.
+
+RSS was chosen over a news API deliberately: it needs no key, so news works on a
+bare deploy where every optional integration is unconfigured. Results are cached
+in memory for 10 minutes, one failing feed never takes out the others, and if
+every feed fails the last good copy is served with `"stale": true` rather than
+an empty page.
+
+Feed text is third-party input. The browser escapes every field before
+rendering (`escapeHtml` in `frontend/index.html`) and links carry
+`rel="noopener noreferrer external"`. If you touch that rendering path, keep the
+escaping — the fields land in `innerHTML`.
