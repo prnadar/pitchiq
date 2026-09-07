@@ -67,3 +67,20 @@ of inactivity, so the first request after idle takes ~50 seconds.
 
 Optional API keys are added afterwards under **Environment** in the Render
 dashboard; the service redeploys automatically.
+
+### Vercel does not work — don't retry it
+
+Tested on 2026-09-07 and abandoned for two independent reasons:
+
+1. **No OpenMP.** Vercel's Python runtime ships no `libgomp.so.1`, which both
+   XGBoost and LightGBM link against, so model loading fails with
+   `OSError: libgomp.so.1: cannot open shared object file`. It cannot be
+   worked around by preloading scikit-learn's vendored copy: auditwheel
+   rewrites that library's SONAME to `libgomp-<hash>.so.1.0.0`, so it never
+   satisfies the plain `libgomp.so.1` the other wheels ask for.
+2. **Serverless breaks the paywall.** `_DAILY_USAGE` and `_saved_predictions`
+   in `backend/main.py` are process memory. Vercel recycles instances, so the
+   free-prediction limit resets unpredictably and saved predictions vanish.
+
+Point 2 applies to any serverless host. Fixing it means moving that state into
+Supabase or Redis; point 1 would still rule out Vercel afterwards.

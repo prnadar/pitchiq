@@ -50,6 +50,9 @@ _DAILY_USAGE: dict[str, dict[str, int]] = {}
 # --- Saved predictions store ---
 _saved_predictions: dict[str, list[dict]] = {}
 
+# Populated during startup so /health can explain a degraded deploy.
+_STARTUP_ERRORS: list[str] = []
+
 
 def _check_usage(user: Optional[dict], client_ip: str) -> bool:
     """Returns True if allowed, False if daily limit exceeded."""
@@ -72,17 +75,30 @@ def _check_usage(user: Optional[dict], client_ip: str) -> bool:
 async def startup() -> None:
     global feature_builder, predictor
     csv_path = Path(__file__).resolve().parents[1] / "data" / "matches.csv"
-    if csv_path.exists():
-        feature_builder = FeatureBuilder(csv_path)
-        logger.info("FeatureBuilder loaded with %d matches", len(feature_builder.matches))
+    try:
+        if csv_path.exists():
+            feature_builder = FeatureBuilder(csv_path)
+            logger.info("FeatureBuilder loaded with %d matches", len(feature_builder.matches))
+        else:
+            _STARTUP_ERRORS.append(f"missing data file: {csv_path}")
+    except Exception as exc:
+        # A raise here takes down the whole ASGI app (an opaque 500 on
+        # serverless). Record it and let /health report what is degraded.
+        logger.exception("FeatureBuilder failed to load")
+        _STARTUP_ERRORS.append(f"features: {type(exc).__name__}: {exc}")
 
     saved_dir = Path(__file__).resolve().parent / "models" / "saved"
-    if (saved_dir / "xgb_model.pkl").exists():
-        predictor = EnsemblePredictor(saved_dir)
-        predictor.load()
-        logger.info("EnsemblePredictor loaded")
-    else:
-        logger.warning("No trained models found at %s — /predict will be unavailable", saved_dir)
+    try:
+        if (saved_dir / "xgb_model.pkl").exists():
+            predictor = EnsemblePredictor(saved_dir)
+            predictor.load()
+            logger.info("EnsemblePredictor loaded")
+        else:
+            logger.warning("No trained models found at %s — /predict will be unavailable", saved_dir)
+            _STARTUP_ERRORS.append(f"missing models at {saved_dir}")
+    except Exception as exc:
+        logger.exception("EnsemblePredictor failed to load")
+        _STARTUP_ERRORS.append(f"models: {type(exc).__name__}: {exc}")
 
 
 # --- Request/Response models ---
@@ -154,6 +170,7 @@ async def health() -> dict[str, Any]:
         "matches_loaded": feature_builder is not None,
         "match_count": len(feature_builder.matches) if feature_builder else 0,
         "accounts_enabled": _accounts_enabled(),
+        "startup_errors": _STARTUP_ERRORS,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 

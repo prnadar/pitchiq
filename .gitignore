@@ -15,3 +15,4 @@ node_modules/
 # Raw IPL archive — re-downloadable via scripts/download_ipl_data.py
 data/ipl_csv2.zip
 frontend/stitch_export_mobile.html
+.vercel
