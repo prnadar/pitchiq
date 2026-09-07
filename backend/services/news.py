@@ -23,11 +23,14 @@ import httpx
 
 logger = logging.getLogger("pitchiq.news")
 
-# Public cricket RSS feeds, most authoritative first. Verified reachable
-# 2026-09-07; Cricbuzz was dropped because its feed returns an empty body.
+# Public cricket RSS feeds, most authoritative first. Verified reachable from
+# Cloud Run on 2026-09-07. Two were dropped: Cricbuzz returns an empty body, and
+# Indian Express 403s datacenter IPs (fine from a laptop, blocked from GCP), so
+# NDTV and News18 provide the India-focused coverage instead.
 FEEDS: tuple[tuple[str, str], ...] = (
     ("ESPNcricinfo", "https://www.espncricinfo.com/rss/content/story/feeds/0.xml"),
-    ("Indian Express", "https://indianexpress.com/section/sports/cricket/feed/"),
+    ("NDTV Sports", "https://feeds.feedburner.com/ndtvsports-cricket"),
+    ("News18", "https://www.news18.com/rss/cricketnext.xml"),
     ("BBC Sport", "https://feeds.bbci.co.uk/sport/cricket/rss.xml"),
 )
 
