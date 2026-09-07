@@ -1,0 +1,16 @@
+# Keep the Cloud Build upload small. Note scripts/ and data/matches.csv are
+# NOT ignored — the Dockerfile runs scripts/ensure_models.py at build time.
+.venv/
+venv/
+.git/
+.gitignore
+.pytest_cache/
+__pycache__/
+**/__pycache__/
+*.pyc
+.stitch/
+tests/
+data/ipl_csv2.zip
+frontend/stitch_export_mobile.html
+.DS_Store
+.vercel/
