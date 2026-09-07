@@ -14,7 +14,17 @@ from typing import Optional
 
 
 def _get_secret() -> str:
-    secret = os.environ.get("JWT_SECRET", "pitchiq-dev-secret-change-in-production")
+    """Signing secret for JWTs.
+
+    No fallback default: this repo is public, so a hardcoded secret would let
+    anyone forge tokens (including an "expert" plan). Fail loudly instead.
+    """
+    secret = os.environ.get("JWT_SECRET", "")
+    if not secret:
+        raise RuntimeError(
+            "JWT_SECRET is not set. Generate one with `openssl rand -hex 32` "
+            "and set it in the environment before starting the server."
+        )
     return secret
 
 

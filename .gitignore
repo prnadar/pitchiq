@@ -8,5 +8,10 @@ dist/
 build/
 .venv/
 venv/
-.stitch/designs/
+.stitch/
 node_modules/
+.DS_Store
+.pytest_cache/
+# Raw IPL archive — re-downloadable via scripts/download_ipl_data.py
+data/ipl_csv2.zip
+frontend/stitch_export_mobile.html

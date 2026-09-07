@@ -4,6 +4,7 @@ Endpoints: /predict, /matches, /odds, /auth, /health, /train
 """
 from __future__ import annotations
 
+import hmac
 import logging
 import os
 from datetime import datetime, timezone
@@ -97,7 +98,7 @@ class PredictRequest(BaseModel):
 
 
 class SignupRequest(BaseModel):
-    email: str
+    email: EmailStr
     name: str
     password: str
 
@@ -108,6 +109,27 @@ class LoginRequest(BaseModel):
 
 
 # --- Auth helper ---
+
+def _dev_auth_allowed() -> bool:
+    """Whether the no-database auth fallback may issue tokens.
+
+    Without Supabase the fallback accepts any credentials, so it must never be
+    reachable on a public deployment. It stays off unless ALLOW_DEV_AUTH is
+    explicitly enabled for local development.
+    """
+    return os.environ.get("ALLOW_DEV_AUTH", "").lower() in ("1", "true", "yes")
+
+
+def _auth_unavailable() -> HTTPException:
+    logger.error(
+        "Auth requested but SUPABASE_URL/SUPABASE_KEY are not configured "
+        "and ALLOW_DEV_AUTH is not enabled."
+    )
+    return HTTPException(
+        503,
+        "Accounts are not available right now. Predictions work without signing in.",
+    )
+
 
 def _get_current_user(authorization: str = Header(default="")) -> Optional[dict]:
     if not authorization.startswith("Bearer "):
@@ -647,11 +669,13 @@ async def signup(req: SignupRequest) -> dict[str, Any]:
         user = await create_user(req.email, req.name, pw_hash)
         user_id = user.get("id", "")
     except RuntimeError:
-        # No Supabase — dev mode
+        # No Supabase configured. Accounts cannot be persisted.
+        if not _dev_auth_allowed():
+            raise _auth_unavailable()
         import uuid
         user_id = str(uuid.uuid4())
         user = {"id": user_id, "email": req.email, "name": req.name, "plan": "trial"}
-        logger.info("Dev mode signup: %s", req.email)
+        logger.warning("ALLOW_DEV_AUTH signup (not persisted): %s", req.email)
     except ValueError as e:
         raise HTTPException(409, str(e))
 
@@ -680,8 +704,12 @@ async def login(req: LoginRequest) -> dict[str, Any]:
         from backend.db.supabase import get_user_by_email
         user = await get_user_by_email(req.email)
     except RuntimeError:
-        # Dev mode — accept any login
+        # No Supabase configured. This branch cannot verify credentials, so it
+        # must stay unreachable unless explicitly enabled for local dev.
+        if not _dev_auth_allowed():
+            raise _auth_unavailable()
         import uuid
+        logger.warning("ALLOW_DEV_AUTH login (credentials NOT verified): %s", req.email)
         token = create_jwt(str(uuid.uuid4()), req.email, "trial")
         return {"token": token, "user": {"email": req.email, "plan": "trial"}}
 
@@ -723,11 +751,12 @@ async def user_plan(authorization: str = Header(default="")) -> dict[str, Any]:
 @app.post("/train")
 async def train_models(authorization: str = Header(default="")) -> dict[str, Any]:
     """Retrain all models. Admin only (check via JWT or simple key)."""
-    admin_key = os.environ.get("ADMIN_KEY", "pitchiq-admin-dev")
+    admin_key = os.environ.get("ADMIN_KEY", "")
     user = _get_current_user(authorization)
 
-    # Allow if admin key matches or if it's dev mode
-    if authorization != f"Bearer {admin_key}" and (not user or user.get("plan") != "expert"):
+    # No shared default: without ADMIN_KEY set, only an "expert" JWT may retrain.
+    key_ok = bool(admin_key) and hmac.compare_digest(authorization, f"Bearer {admin_key}")
+    if not key_ok and (not user or user.get("plan") != "expert"):
         raise HTTPException(403, "Admin access required")
 
     from backend.models.train import train_and_evaluate

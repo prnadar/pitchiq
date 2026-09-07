@@ -74,17 +74,54 @@ def test_signup_missing_fields():
     assert r.status_code in (400, 422)
 
 
-def test_signup_and_login():
-    import random
-    email = f"test{random.randint(1000,9999)}@pitchiq.test"
-    r = client.post("/auth/signup", json={"email": email, "name": "Test", "password": "test123"})
-    assert r.status_code == 200
-    data = r.json()
-    assert "token" in data
+def test_signup_rejects_malformed_email():
+    r = client.post(
+        "/auth/signup",
+        json={"email": "not-an-email", "name": "Test", "password": "test123"},
+    )
+    assert r.status_code == 422
 
-    r2 = client.post("/auth/login", json={"email": email, "password": "test123"})
-    # Dev mode always returns 200
-    assert r2.status_code in (200, 401)
+
+def test_auth_unavailable_without_database(monkeypatch):
+    """Without Supabase, auth must refuse rather than issue tokens to anyone."""
+    monkeypatch.delenv("ALLOW_DEV_AUTH", raising=False)
+    monkeypatch.delenv("SUPABASE_URL", raising=False)
+    monkeypatch.delenv("SUPABASE_KEY", raising=False)
+
+    r = client.post(
+        "/auth/signup",
+        json={"email": "test@example.com", "name": "Test", "password": "test123"},
+    )
+    assert r.status_code == 503
+
+    r2 = client.post(
+        "/auth/login",
+        json={"email": "attacker@example.com", "password": "any-password"},
+    )
+    assert r2.status_code == 503, "unverified credentials must never yield a token"
+
+
+def test_dev_auth_opt_in(monkeypatch):
+    """ALLOW_DEV_AUTH re-enables the local no-database flow."""
+    monkeypatch.setenv("ALLOW_DEV_AUTH", "1")
+    monkeypatch.setenv("JWT_SECRET", "test-secret-for-unit-tests")
+    monkeypatch.delenv("SUPABASE_URL", raising=False)
+    monkeypatch.delenv("SUPABASE_KEY", raising=False)
+
+    import random
+    email = f"test{random.randint(1000, 9999)}@example.com"
+    r = client.post(
+        "/auth/signup", json={"email": email, "name": "Test", "password": "test123"}
+    )
+    assert r.status_code == 200
+    assert "token" in r.json()
+
+
+def test_train_rejects_removed_default_admin_key(monkeypatch):
+    """The old hardcoded admin key is published in this repo and must not work."""
+    monkeypatch.delenv("ADMIN_KEY", raising=False)
+    r = client.post("/train", headers={"Authorization": "Bearer pitchiq-admin-dev"})
+    assert r.status_code == 403
 
 
 def test_rate_limit(monkeypatch):

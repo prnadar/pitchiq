@@ -355,8 +355,9 @@ tailwind.config = {
 </div>
 
 <script>
-const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? 'http://localhost:8000' : '';
+// The backend serves this page, so the API is always same-origin.
+// Hardcoding a dev port breaks whenever the server runs anywhere else.
+const API_BASE = '';
 
 // ─── State ───────────────────────────────────────────────────────────────────
 let currentUser = JSON.parse(localStorage.getItem('pitchiq_user') || 'null');
